@@ -32,15 +32,9 @@ func main() {
 func test1() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
-	var b = "1"
-	const afunc = function() {
-		var a = 1
-		var c = 1 + b
-	}
-	const cfunc = function() {
-		var c = 1
-		var a = 1	
-		var d = 1 + 1
+	var b = {
+		"ceshi": 1,
+		"ceshi": "2",
 	}
 	`
 	fmt.Println("====================== token init =======================")

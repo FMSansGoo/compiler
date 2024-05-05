@@ -26,6 +26,12 @@ var (
 	AstTypeBinaryExpression = newAstType("BinaryExpression", 10)
 	// funciton
 	AstTypeFunctionExpression = newAstType("FunctionExpression", 11)
+	// array
+	AstTypeArrayLiteral = newAstType("ArrayLiteral", 12)
+	// dict
+	AstTypeDictLiteral = newAstType("DictLiteral", 13)
+	// kv
+	AstTypePropertyAssignment = newAstType("PropertyAssignment", 14)
 )
 
 func newAstType(name string, value int64) AstType {

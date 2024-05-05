@@ -73,9 +73,13 @@ func (this *SemanticAnalysis) visitAssignmentExpression(node Node) {
 	case AstTypeNumberLiteral.Name():
 		valueType = this.visitNumberLiteral(right)
 	case AstTypeStringLiteral.Name():
-		valueType = this.visitStringLiteral(right)
+		valueType, _ = this.visitStringLiteral(right)
 	case AstTypeBooleanLiteral.Name():
 		valueType = this.visitBooleanLiteral(right)
+	case AstTypeArrayLiteral.Name():
+		valueType = this.visitArrayLiteral(right)
+	case AstTypeDictLiteral.Name():
+		valueType = this.visitDictLiteral(right)
 	case AstTypeNullLiteral.Name():
 		valueType = this.visitNullLiteral(right)
 	}
@@ -146,7 +150,11 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 	case AstTypeNullLiteral.Name():
 		valueType = this.visitNullLiteral(right)
 	case AstTypeStringLiteral.Name():
-		valueType = this.visitStringLiteral(right)
+		valueType, _ = this.visitStringLiteral(right)
+	case AstTypeArrayLiteral.Name():
+		valueType = this.visitArrayLiteral(right)
+	case AstTypeDictLiteral.Name():
+		valueType = this.visitDictLiteral(right)
 	case AstTypeIdentifier.Name():
 		var varName string
 		_, varName, _ = this.visitIdentifier(right)
@@ -162,6 +170,25 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 
 	fmt.Printf("this.CurrentScope: %+v\n", this.CurrentScope)
 	return
+}
+
+func (this *SemanticAnalysis) visitArrayLiteral(node Node) ValueType {
+	// 做一下限制，不能多种类型混合在数组里面一起
+	if node.Type() == AstTypeArrayLiteral.Name() {
+		if len(node.(ArrayLiteral).Values) > 0 {
+			checkType := node.(ArrayLiteral).Values[0].Type()
+			// 数组
+			for _, item := range node.(ArrayLiteral).Values {
+				if item.Type() != checkType {
+					logError("array literal type error", checkType, item.Type())
+					return ValueTypeError
+				}
+			}
+		}
+		// 这里
+		return ValueTypeArrayLiteral
+	}
+	return ValueTypeError
 }
 
 func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
@@ -184,7 +211,7 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 			case AstTypeNumberLiteral.Name():
 				leftValueType = this.visitNumberLiteral(left)
 			case AstTypeStringLiteral.Name():
-				leftValueType = this.visitStringLiteral(left)
+				leftValueType, _ = this.visitStringLiteral(left)
 			case AstTypeIdentifier.Name():
 				leftValueType, _, _ = this.visitIdentifier(left)
 			default:
@@ -201,7 +228,7 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 			case AstTypeNumberLiteral.Name():
 				rightValueType = this.visitNumberLiteral(right)
 			case AstTypeStringLiteral.Name():
-				rightValueType = this.visitStringLiteral(right)
+				rightValueType, _ = this.visitStringLiteral(right)
 			case AstTypeIdentifier.Name():
 				rightValueType, _, _ = this.visitIdentifier(right)
 			default:
@@ -284,11 +311,75 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 	return ValueTypeError
 }
 
-func (this *SemanticAnalysis) visitStringLiteral(node Node) ValueType {
-	if node.Type() == AstTypeStringLiteral.Name() {
-		return ValueTypeString
+func (this *SemanticAnalysis) visitDictLiteral(node Node) ValueType {
+	// 做一下限制，不能多种类型混合在dict
+	// key 也不能重复
+	if node.Type() == AstTypeDictLiteral.Name() {
+		if len(node.(DictLiteral).Values) <= 0 {
+			return ValueTypeDictLiteral
+		}
+		keyNames := []string{}
+		_, firstDvType, _ := this.visitPropertyAssignment(node.(DictLiteral).Values[0])
+		for _, value := range node.(DictLiteral).Values {
+			_, dvType, keyName := this.visitPropertyAssignment(value)
+			if dvType != firstDvType {
+				logError("dict literal value type error", firstDvType, dvType)
+				return ValueTypeError
+			}
+			inSlice := InStringSlice(keyNames, keyName)
+			if inSlice {
+				logError("dict literal duplicate key", keyName)
+				return ValueTypeError
+			}
+			keyNames = append(keyNames, keyName)
+		}
+		return ValueTypeDictLiteral
 	}
 	return ValueTypeError
+}
+
+func (this *SemanticAnalysis) visitPropertyAssignment(node Node) (valueType ValueType, kvType ValueType, keyName string) {
+	if node.Type() == AstTypePropertyAssignment.Name() {
+		_, keyName = this.visitStringLiteral(node.(PropertyAssignment).Key)
+
+		kv := node.(PropertyAssignment).Value
+		switch kv.Type() {
+		case AstTypeFunctionExpression.Name():
+			kvType = this.visitFunctionExpression(kv)
+		case AstTypeBinaryExpression.Name():
+			kvType = this.visitBinaryExpression(kv)
+		case AstTypeNumberLiteral.Name():
+			kvType = this.visitNumberLiteral(kv)
+		case AstTypeNullLiteral.Name():
+			kvType = this.visitNullLiteral(kv)
+		case AstTypeStringLiteral.Name():
+			kvType, _ = this.visitStringLiteral(kv)
+		case AstTypeArrayLiteral.Name():
+			kvType = this.visitArrayLiteral(kv)
+		case AstTypeDictLiteral.Name():
+			kvType = this.visitDictLiteral(kv)
+		case AstTypeIdentifier.Name():
+			var varName string
+			_, varName, _ = this.visitIdentifier(kv)
+			symbol, ok := this.CurrentScope.LookupSymbol(varName)
+			if ok {
+				kvType = symbol.Value
+			} else {
+				logError("undeclared variable", varName)
+				return
+			}
+		}
+		return ValueTypePropertyAssignment, kvType, keyName
+	}
+	return ValueTypeError, ValueTypeError, ""
+}
+
+func (this *SemanticAnalysis) visitStringLiteral(node Node) (valueType ValueType, value string) {
+	if node.Type() == AstTypeStringLiteral.Name() {
+		value = node.(StringLiteral).Value
+		return ValueTypeString, value
+	}
+	return ValueTypeError, ""
 }
 
 func (this *SemanticAnalysis) visitBooleanLiteral(node Node) ValueType {

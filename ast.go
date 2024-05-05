@@ -176,7 +176,7 @@ func (pa PropertyAssignment) Type() string {
 }
 
 type DictLiteral struct {
-	Value []Node // key
+	Values []Node // key
 }
 
 func (dl DictLiteral) Type() string {

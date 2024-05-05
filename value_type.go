@@ -20,6 +20,9 @@ var (
 	ValueTypeIdentifier         = newValueType("Identifier", 5)
 	ValueTypeBinaryExpression   = newValueType("BinaryExpression", 6)
 	ValueTypeFunctionExpression = newValueType("FunctionExpression", 7)
+	ValueTypeArrayLiteral       = newValueType("ArrayLiteral", 8)
+	ValueTypeDictLiteral        = newValueType("DictLiteral", 9)
+	ValueTypePropertyAssignment = newValueType("PropertyAssignment", 10)
 )
 
 func newValueType(name string, value int64) ValueType {

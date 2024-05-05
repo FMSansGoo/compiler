@@ -702,14 +702,18 @@ func (this *SansLangParser) astParseDict() Node {
 				comma := this.Match(TokenTypeComma)
 				if !comma.Error() {
 					kv = this.astParseAssignment()
-					kvs = append(kvs, kv)
+					if kv != nil {
+						kvs = append(kvs, kv)
+					} else {
+						break
+					}
 				} else {
 					break
 				}
 			}
 			rb := this.Match(TokenTypeRBrace)
 			if !rb.Error() {
-				return DictLiteral{Value: kvs}
+				return DictLiteral{Values: kvs}
 			}
 		}
 	}
@@ -804,7 +808,11 @@ func (this *SansLangParser) astParseArray() Node {
 				comma := this.Match(TokenTypeComma)
 				if !comma.Error() {
 					exp = this.astParseExpression()
-					exps = append(exps, exp)
+					if exp != nil {
+						exps = append(exps, exp)
+					} else {
+						break
+					}
 				} else {
 					break
 				}

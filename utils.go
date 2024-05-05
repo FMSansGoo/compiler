@@ -34,3 +34,12 @@ func logError(msg string, args ...interface{}) {
 	fmt.Println(str)
 	panic(str)
 }
+
+func InStringSlice(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
