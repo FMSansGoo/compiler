@@ -32,10 +32,7 @@ func main() {
 func test1() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
-	var b = {
-		"ceshi": 1,
-		"ceshi": "2",
-	}
+	var a = 1 != true
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

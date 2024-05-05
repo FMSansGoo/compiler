@@ -305,6 +305,108 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 				return ValueTypeError
 			}
 			return ValueTypeNumber
+		case ">":
+			fallthrough
+		case "<":
+			fallthrough
+		case ">=":
+			fallthrough
+		case "<=":
+			// left
+			left := node.(BinaryExpression).Left
+			leftValueType := ValueTypeError
+			switch left.Type() {
+			case AstTypeBinaryExpression.Name():
+				leftValueType = this.visitBinaryExpression(left)
+			case AstTypeNumberLiteral.Name():
+				leftValueType = this.visitNumberLiteral(left)
+			case AstTypeStringLiteral.Name():
+				leftValueType, _ = this.visitStringLiteral(left)
+			case AstTypeIdentifier.Name():
+				leftValueType, _, _ = this.visitIdentifier(left)
+			default:
+				logError("左值类型错误", node.(BinaryExpression).Left)
+				return ValueTypeError
+			}
+
+			// right
+			right := node.(BinaryExpression).Right
+			rightValueType := ValueTypeError
+			switch right.Type() {
+			case AstTypeBinaryExpression.Name():
+				rightValueType = this.visitBinaryExpression(right)
+			case AstTypeNumberLiteral.Name():
+				rightValueType = this.visitNumberLiteral(right)
+			case AstTypeStringLiteral.Name():
+				rightValueType, _ = this.visitStringLiteral(right)
+			case AstTypeIdentifier.Name():
+				rightValueType, _, _ = this.visitIdentifier(right)
+			default:
+				logError("右值类型错误", node.(BinaryExpression).Right)
+				return ValueTypeError
+			}
+			logInfo("visitBinaryExpression", leftValueType, rightValueType)
+
+			if leftValueType != rightValueType {
+				logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
+				return ValueTypeError
+			}
+			return leftValueType
+		case "==":
+			fallthrough
+		case "!=":
+			// left
+			left := node.(BinaryExpression).Left
+			leftValueType := ValueTypeError
+			switch left.Type() {
+			case AstTypeBinaryExpression.Name():
+				leftValueType = this.visitBinaryExpression(left)
+			case AstTypeNumberLiteral.Name():
+				leftValueType = this.visitNumberLiteral(left)
+			case AstTypeStringLiteral.Name():
+				leftValueType, _ = this.visitStringLiteral(left)
+			case AstTypeIdentifier.Name():
+				leftValueType, _, _ = this.visitIdentifier(left)
+			case AstTypeBooleanLiteral.Name():
+				leftValueType = this.visitBooleanLiteral(left)
+			case AstTypeNullLiteral.Name():
+				leftValueType = this.visitNullLiteral(left)
+			default:
+				logError("左值类型错误", node.(BinaryExpression).Left)
+				return ValueTypeError
+			}
+
+			// right
+			right := node.(BinaryExpression).Right
+			rightValueType := ValueTypeError
+			switch right.Type() {
+			case AstTypeBinaryExpression.Name():
+				rightValueType = this.visitBinaryExpression(right)
+			case AstTypeNumberLiteral.Name():
+				rightValueType = this.visitNumberLiteral(right)
+			case AstTypeStringLiteral.Name():
+				rightValueType, _ = this.visitStringLiteral(right)
+			case AstTypeIdentifier.Name():
+				rightValueType, _, _ = this.visitIdentifier(right)
+			case AstTypeBooleanLiteral.Name():
+				rightValueType = this.visitBooleanLiteral(right)
+			case AstTypeNullLiteral.Name():
+				rightValueType = this.visitNullLiteral(right)
+			default:
+				logError("右值类型错误", node.(BinaryExpression).Right)
+				return ValueTypeError
+			}
+			logInfo("visitBinaryExpression", leftValueType, rightValueType)
+
+			if leftValueType != rightValueType {
+				logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
+				return ValueTypeError
+			}
+			return leftValueType
+		case "and":
+			fallthrough
+		case "or":
+
 		}
 	}
 
@@ -338,38 +440,38 @@ func (this *SemanticAnalysis) visitDictLiteral(node Node) ValueType {
 	return ValueTypeError
 }
 
-func (this *SemanticAnalysis) visitPropertyAssignment(node Node) (valueType ValueType, kvType ValueType, keyName string) {
+func (this *SemanticAnalysis) visitPropertyAssignment(node Node) (valueType ValueType, vType ValueType, keyName string) {
 	if node.Type() == AstTypePropertyAssignment.Name() {
 		_, keyName = this.visitStringLiteral(node.(PropertyAssignment).Key)
 
-		kv := node.(PropertyAssignment).Value
-		switch kv.Type() {
+		v := node.(PropertyAssignment).Value
+		switch v.Type() {
 		case AstTypeFunctionExpression.Name():
-			kvType = this.visitFunctionExpression(kv)
+			vType = this.visitFunctionExpression(v)
 		case AstTypeBinaryExpression.Name():
-			kvType = this.visitBinaryExpression(kv)
+			vType = this.visitBinaryExpression(v)
 		case AstTypeNumberLiteral.Name():
-			kvType = this.visitNumberLiteral(kv)
+			vType = this.visitNumberLiteral(v)
 		case AstTypeNullLiteral.Name():
-			kvType = this.visitNullLiteral(kv)
+			vType = this.visitNullLiteral(v)
 		case AstTypeStringLiteral.Name():
-			kvType, _ = this.visitStringLiteral(kv)
+			vType, _ = this.visitStringLiteral(v)
 		case AstTypeArrayLiteral.Name():
-			kvType = this.visitArrayLiteral(kv)
+			vType = this.visitArrayLiteral(v)
 		case AstTypeDictLiteral.Name():
-			kvType = this.visitDictLiteral(kv)
+			vType = this.visitDictLiteral(v)
 		case AstTypeIdentifier.Name():
 			var varName string
-			_, varName, _ = this.visitIdentifier(kv)
+			_, varName, _ = this.visitIdentifier(v)
 			symbol, ok := this.CurrentScope.LookupSymbol(varName)
 			if ok {
-				kvType = symbol.Value
+				vType = symbol.Value
 			} else {
 				logError("undeclared variable", varName)
 				return
 			}
 		}
-		return ValueTypePropertyAssignment, kvType, keyName
+		return ValueTypePropertyAssignment, vType, keyName
 	}
 	return ValueTypeError, ValueTypeError, ""
 }
