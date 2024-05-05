@@ -1,0 +1,72 @@
+package main
+
+import "fmt"
+
+type AstType struct {
+	name  string
+	value int64
+}
+
+var (
+	AstTypes = []AstType{}
+
+	// AstType
+	AstTypeProgram        = newAstType("Program", 1)
+	AstTypeBlockStatement = newAstType("BlockStatement", 2)
+	//VariableDeclaration
+	AstTypeVariableDeclaration = newAstType("VariableDeclaration", 3)
+	AstTypeNumberLiteral       = newAstType("NumberLiteral", 4)
+	AstTypeNullLiteral         = newAstType("NullLiteral", 5)
+	AstTypeIdentifier          = newAstType("Identifier", 6)
+	AstTypeStringLiteral       = newAstType("StringLiteral", 7)
+	AstTypeBooleanLiteral      = newAstType("BooleanLiteral", 8)
+	// 赋值
+	AstTypeAssignmentExpression = newAstType("AssignmentExpression", 9)
+	// BinaryExpression
+	AstTypeBinaryExpression = newAstType("BinaryExpression", 10)
+	// funciton
+	AstTypeFunctionExpression = newAstType("FunctionExpression", 11)
+)
+
+func newAstType(name string, value int64) AstType {
+	o := AstType{name: name, value: value}
+	AstTypes = append(AstTypes, o)
+	return o
+}
+
+func AstTypeAll() []AstType {
+	return AstTypes
+}
+
+func (t AstType) valid() bool {
+	for _, v := range AstTypeAll() {
+		if v == t {
+			return true
+		}
+	}
+	return false
+}
+
+func (t AstType) Value() int64 {
+	if !t.valid() {
+		panic(fmt.Errorf("invalid AstType: (%+v)", t))
+	}
+	return t.value
+}
+
+func (t AstType) ValuePtr() *int64 {
+	v := t.Value()
+	return &v
+}
+
+func (t AstType) Name() string {
+	if !t.valid() {
+		panic(fmt.Errorf("invalid AstType: (%+v)", t))
+	}
+	return t.name
+}
+
+func (t AstType) NamePtr() *string {
+	n := t.Name()
+	return &n
+}
