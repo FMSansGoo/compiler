@@ -205,8 +205,8 @@ func (fs ForStatement) Type() string {
 }
 
 type WhileStatement struct {
-	Test Node
-	Body Node
+	Condition Node
+	Body      Node
 }
 
 func (w WhileStatement) Type() string {
@@ -238,13 +238,13 @@ func (cb ClassLiteral) Type() string {
 	return "ClassLiteral"
 }
 
-type memberExpression struct {
+type MemberExpression struct {
 	Object   Node
 	Property Node
 	// 这里拿来区分 点语法 和 数组语法
 	ElementType string
 }
 
-func (cb memberExpression) Type() string {
-	return "memberExpression"
+func (cb MemberExpression) Type() string {
+	return "MemberExpression"
 }

@@ -32,6 +32,14 @@ var (
 	AstTypeDictLiteral = newAstType("DictLiteral", 13)
 	// kv
 	AstTypePropertyAssignment = newAstType("PropertyAssignment", 14)
+	// not unary
+	AstTypeUnaryExpression = newAstType("UnaryExpression", 15)
+	// dot array
+	AstTypeMemberExpression = newAstType("MemberExpression", 16)
+	// if
+	AstTypeIfStatement = newAstType("IfStatement", 17)
+	// while
+	AstTypeWhileStatement = newAstType("WhileStatement", 18)
 )
 
 func newAstType(name string, value int64) AstType {

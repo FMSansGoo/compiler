@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+// 数值类型枚举
 type ValueType struct {
 	name  string
 	value int64
@@ -23,6 +24,10 @@ var (
 	ValueTypeArrayLiteral       = newValueType("ArrayLiteral", 8)
 	ValueTypeDictLiteral        = newValueType("DictLiteral", 9)
 	ValueTypePropertyAssignment = newValueType("PropertyAssignment", 10)
+	ValueTypeUnaryExpression    = newValueType("UnaryExpression", 11)
+	ValueTypeMemberExpression   = newValueType("MemberExpression", 12)
+	ValueTypeIfStatement        = newValueType("IfStatement", 13)
+	ValueTypeWhileStatement     = newValueType("WhileStatement", 14)
 )
 
 func newValueType(name string, value int64) ValueType {

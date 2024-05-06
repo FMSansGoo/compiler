@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	test()
 	// 普通运算
 	test1()
 	// 递归下降处理
@@ -29,10 +30,18 @@ func main() {
 	//// array、dot
 	//test11()
 }
+
+func test() {
+
+}
+
 func test1() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
-	var a = 1 != true
+	var a = not true
+	a = true
+	// 这时候 a 的作用域应该是什么？
+	// 如果是强类型语言要做 报错
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

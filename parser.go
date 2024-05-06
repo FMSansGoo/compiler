@@ -300,13 +300,13 @@ func (this *SansLangParser) astParseWhileStatement() Node {
 	if this.Expect(TokenTypeWhile) {
 		this.Match(TokenTypeWhile)
 		this.Match(TokenTypeLParen)
-		test := this.astParseExpression()
-		if test != nil {
+		condition := this.astParseExpression()
+		if condition != nil {
 			rp := this.Match(TokenTypeRParen)
 			if !rp.Error() {
 				body := this.astParseBlockStatement()
 				if body != nil {
-					return WhileStatement{Test: test, Body: body}
+					return WhileStatement{Condition: condition, Body: body}
 				}
 			}
 		}
@@ -424,7 +424,7 @@ func (this *SansLangParser) astParseCallMemberExpression() Node {
 			this.Match(TokenTypeDot)
 			prop := this.astParseIdentifier()
 			if prop != nil {
-				node := memberExpression{
+				node := MemberExpression{
 					Object:      subAst,
 					Property:    prop,
 					ElementType: "dot",
@@ -439,7 +439,7 @@ func (this *SansLangParser) astParseCallMemberExpression() Node {
 			prop := this.astParseExpression()
 			if prop != nil {
 				this.Match(TokenTypeRBracket)
-				node := memberExpression{
+				node := MemberExpression{
 					Object:      subAst,
 					Property:    prop,
 					ElementType: "array",
@@ -468,7 +468,7 @@ func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 		this.Match(TokenTypeDot)
 		prop := this.astParseIdentifier()
 		if prop != nil {
-			node = memberExpression{
+			node = MemberExpression{
 				Object:      node,
 				Property:    prop,
 				ElementType: "dot",
@@ -483,7 +483,7 @@ func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 		prop := this.astParseExpression()
 		if prop != nil {
 			this.Match(TokenTypeRBracket)
-			node = memberExpression{
+			node = MemberExpression{
 				Object:      node,
 				Property:    prop,
 				ElementType: "array",

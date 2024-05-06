@@ -3,11 +3,11 @@ package main
 import "fmt"
 
 /*
+	todo 还没做
 	语义分析
-	前两次分别对类的生命和成员的声明进行解析并构建符号表（类型和成员），第三次再对方法体进行解析。这样就可以方便地处理不同顺序定义的问题。总的来说，三次遍历的任务是：
-	1	第一遍：扫描所有class定义，检查有无重名的情况。
-	2	第二遍：检查类的基类是否存在，检测是否循环继承；检查所有字段的类型以及是否重名；检查所有方法参数和返回值的类型以及是否重复定义（签名完全一致的情况）。
-	3	第三遍：检查所有方法体中语句和表达式的语义。
+	前两次分别对类的生命和成员的声明进行解析并构建符号表（类型和成员），第2次再对方法体进行解析。这样就可以方便地处理不同顺序定义的问题。总的来说，2次遍历的任务是：
+	1	第一遍：扫描所有class定义，检查有无重名的情况。检查类的基类是否存在，检测是否循环继承；检查所有字段的类型以及是否重名；检查所有方法参数和返回值的类型以及是否重复定义（签名完全一致的情况）。
+	3	第二遍：检查所有方法体中语句和表达式的语义。
 
 */
 
@@ -41,6 +41,12 @@ func (this *SemanticAnalysis) visitProgram(body []Node) {
 		// 赋值
 		case AstTypeAssignmentExpression.Name():
 			this.visitAssignmentExpression(item)
+		// 访问 if
+		case AstTypeIfStatement.Name():
+			this.visitIfStatement(item)
+		// 访问 while
+		case AstTypeWhileStatement.Name():
+			this.visitWhileStatement(item)
 		// 访问 block
 		case AstTypeBlockStatement.Name():
 			this.visitBlockStatement(item)
@@ -57,6 +63,7 @@ func (this *SemanticAnalysis) visitAssignmentExpression(node Node) {
 		_, variableName, _ = this.visitIdentifier(left)
 	}
 	symbol, ok := this.CurrentScope.LookupSymbol(variableName)
+	// const 检查
 	if ok && symbol.VarType == TokenTypeConst.Name() {
 		logError("const variable cannot be reassigned", variableName)
 		return
@@ -82,6 +89,13 @@ func (this *SemanticAnalysis) visitAssignmentExpression(node Node) {
 		valueType = this.visitDictLiteral(right)
 	case AstTypeNullLiteral.Name():
 		valueType = this.visitNullLiteral(right)
+	case AstTypeUnaryExpression.Name():
+		valueType = this.visitUnaryExpression(right)
+	}
+	// 强类型检查，如果右边的值不是同一个类型就报错
+	if ok && symbol.Value != valueType {
+		logError("variable cannot be reassigned to another type", variableName)
+		return
 	}
 	this.CurrentScope.AddSymbol(varType, variableName, valueType)
 	return
@@ -149,10 +163,14 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 		valueType = this.visitNumberLiteral(right)
 	case AstTypeNullLiteral.Name():
 		valueType = this.visitNullLiteral(right)
+	case AstTypeBooleanLiteral.Name():
+		valueType = this.visitBooleanLiteral(right)
 	case AstTypeStringLiteral.Name():
 		valueType, _ = this.visitStringLiteral(right)
 	case AstTypeArrayLiteral.Name():
 		valueType = this.visitArrayLiteral(right)
+	case AstTypeUnaryExpression.Name():
+		valueType = this.visitUnaryExpression(right)
 	case AstTypeDictLiteral.Name():
 		valueType = this.visitDictLiteral(right)
 	case AstTypeIdentifier.Name():
@@ -199,10 +217,10 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 	//	Right    Node   // right属性
 	//}
 	if node.Type() == AstTypeBinaryExpression.Name() {
-		// op + - * /
+		// op
 		switch node.(BinaryExpression).Operator {
 		case "+":
-			// left
+			// 这里接受多个类型
 			left := node.(BinaryExpression).Left
 			leftValueType := ValueTypeError
 			switch left.Type() {
@@ -266,6 +284,14 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 		case "*":
 			fallthrough
 		case "/":
+			fallthrough
+		case "+=":
+			fallthrough
+		case "-=":
+			fallthrough
+		case "*=":
+			fallthrough
+		case "/=":
 			// left
 			left := node.(BinaryExpression).Left
 			leftValueType := ValueTypeError
@@ -351,7 +377,7 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 				logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
 				return ValueTypeError
 			}
-			return leftValueType
+			return ValueTypeBoolean
 		case "==":
 			fallthrough
 		case "!=":
@@ -402,11 +428,49 @@ func (this *SemanticAnalysis) visitBinaryExpression(node Node) ValueType {
 				logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
 				return ValueTypeError
 			}
-			return leftValueType
+			return ValueTypeBoolean
 		case "and":
 			fallthrough
 		case "or":
+			// left
+			left := node.(BinaryExpression).Left
+			leftValueType := ValueTypeError
+			switch left.Type() {
+			case AstTypeBinaryExpression.Name():
+				leftValueType = this.visitBinaryExpression(left)
+			case AstTypeIdentifier.Name():
+				leftValueType, _, _ = this.visitIdentifier(left)
+			case AstTypeBooleanLiteral.Name():
+				leftValueType = this.visitBooleanLiteral(left)
+			default:
+				logError("左值类型错误", node.(BinaryExpression).Left)
+				return ValueTypeError
+			}
 
+			// right
+			right := node.(BinaryExpression).Right
+			rightValueType := ValueTypeError
+			switch right.Type() {
+			case AstTypeBinaryExpression.Name():
+				rightValueType = this.visitBinaryExpression(right)
+			case AstTypeIdentifier.Name():
+				rightValueType, _, _ = this.visitIdentifier(right)
+			case AstTypeBooleanLiteral.Name():
+				rightValueType = this.visitBooleanLiteral(right)
+			default:
+				logError("右值类型错误", node.(BinaryExpression).Right)
+				return ValueTypeError
+			}
+			logInfo("in and not visitBinaryExpression", leftValueType, rightValueType)
+
+			if (leftValueType != ValueTypeBoolean) && (rightValueType != ValueTypeBoolean) && (leftValueType != rightValueType) {
+				logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
+				return ValueTypeError
+			}
+			return ValueTypeBoolean
+		default:
+			logError("not support binary expression operator", node.(BinaryExpression).Operator)
+			return ValueTypeError
 		}
 	}
 
@@ -505,7 +569,7 @@ func (this *SemanticAnalysis) visitNumberLiteral(node Node) ValueType {
 	return ValueTypeError
 }
 
-// 这里要做一下类型判断
+// 变量，这里要做一下类型判断
 func (this *SemanticAnalysis) visitIdentifier(node Node) (valueType ValueType, variableName string, varType string) {
 	if node.Type() == AstTypeIdentifier.Name() {
 		symbol, ok := this.CurrentScope.LookupSymbol(node.(Identifier).Value)
@@ -516,4 +580,118 @@ func (this *SemanticAnalysis) visitIdentifier(node Node) (valueType ValueType, v
 		}
 	}
 	return ValueTypeError, "", ""
+}
+
+// not
+func (this *SemanticAnalysis) visitUnaryExpression(node Node) ValueType {
+	if node.Type() == AstTypeUnaryExpression.Name() {
+		op := node.(UnaryExpression).Operator
+		switch op {
+		case "not":
+			vValueType := ValueTypeError
+			// not 后面只能加 identifier / bool
+			v := node.(UnaryExpression).Value
+			switch v.Type() {
+			case AstTypeBinaryExpression.Name():
+				vValueType = this.visitBinaryExpression(v)
+			case AstTypeIdentifier.Name():
+				vValueType, _, _ = this.visitIdentifier(v)
+			case AstTypeBooleanLiteral.Name():
+				vValueType = this.visitBooleanLiteral(v)
+			}
+			logInfo("not value type", vValueType)
+			if vValueType != ValueTypeBoolean {
+				logError("not value type error", ValueTypeBoolean, vValueType)
+				return ValueTypeError
+			}
+			return ValueTypeBoolean
+		}
+
+		return ValueTypeBoolean
+	}
+	return ValueTypeError
+}
+
+func (this *SemanticAnalysis) visitIfStatement(node Node) ValueType {
+	if node.Type() == AstTypeIfStatement.Name() {
+		condition := node.(IfStatement).Condition
+		conditionType := ValueTypeError
+		switch condition.Type() {
+		case AstTypeBinaryExpression.Name():
+			conditionType = this.visitBinaryExpression(condition)
+		case AstTypeIdentifier.Name():
+			conditionType, _, _ = this.visitIdentifier(condition)
+		case AstTypeBooleanLiteral.Name():
+			conditionType = this.visitBooleanLiteral(condition)
+		default:
+			logError("not support if statement condition type", conditionType)
+			return ValueTypeError
+		}
+		logInfo("if condition type", conditionType)
+
+		if conditionType != ValueTypeBoolean {
+			logError("if condition type error", ValueTypeBoolean, conditionType)
+			return ValueTypeError
+		}
+
+		consequent := node.(IfStatement).Consequent
+		if consequent.Type() == AstTypeBlockStatement.Name() {
+			this.visitBlockStatement(consequent)
+		}
+
+		alternate := node.(IfStatement).Alternate
+		if alternate != nil {
+			if alternate.Type() == AstTypeBlockStatement.Name() {
+				this.visitBlockStatement(alternate)
+			}
+		}
+
+		return ValueTypeError
+	}
+	return ValueTypeError
+}
+func (this *SemanticAnalysis) visitWhileStatement(node Node) ValueType {
+	if node.Type() == AstTypeWhileStatement.Name() {
+		condition := node.(WhileStatement).Condition
+		conditionType := ValueTypeError
+		switch condition.Type() {
+		case AstTypeBinaryExpression.Name():
+			conditionType = this.visitBinaryExpression(condition)
+		case AstTypeIdentifier.Name():
+			conditionType, _, _ = this.visitIdentifier(condition)
+		case AstTypeBooleanLiteral.Name():
+			conditionType = this.visitBooleanLiteral(condition)
+		default:
+			logError("not support while statement condition type", conditionType)
+			return ValueTypeError
+		}
+		logInfo("while condition type", conditionType)
+
+		if conditionType != ValueTypeBoolean {
+			logError("while condition type error", ValueTypeBoolean, conditionType)
+			return ValueTypeError
+		}
+
+		body := node.(WhileStatement).Body
+		if body.Type() == AstTypeBlockStatement.Name() {
+			this.visitBlockStatement(body)
+		}
+
+		return ValueTypeError
+	}
+	return ValueTypeError
+}
+
+// Todo array dot 语法 [] .
+func (this *SemanticAnalysis) visitMemberExpression(node Node) ValueType {
+	if node.Type() == AstTypeMemberExpression.Name() {
+		et := node.(MemberExpression).ElementType
+		switch et {
+		case "dot":
+		case "array":
+		}
+
+		return ValueTypeError
+	}
+	return ValueTypeError
 }
