@@ -206,7 +206,7 @@ func (this *SansLangParser) astParseClassExpression() Node {
 					this.Match(TokenTypeRParen)
 				}
 			}
-			body := this.astParseClassBodyStatement()
+			body := this.astParseClassBody()
 			return ClassExpression{
 				Name:       id,
 				SuperClass: superClass,
@@ -218,13 +218,80 @@ func (this *SansLangParser) astParseClassExpression() Node {
 	return nil
 }
 
-func (this *SansLangParser) astParseClassBodyStatement() Node {
-	// classBodyStatement: '{' statements '}'
+func (this *SansLangParser) astParseClassBody() Node {
+	// classBodyStatement: '{' classBodyStatements '}'
 	lb := this.Match(TokenTypeLBrace)
 	if !lb.Error() {
-		body := this.astParseStatements()
+		body := this.astParseClassBodyStatements()
 		this.Match(TokenTypeRBrace)
 		return ClassBodyStatement{Body: body}
+	}
+	return nil
+}
+
+func (this *SansLangParser) astParseClassBodyStatements() []Node {
+	// 处理不同的函数定义
+	body := []Node{}
+	fmt.Printf("astParseClassBodyStatements %v\n", this.Current())
+	for this.Current().Type != TokenTypeRBrace {
+		subAst := this.astParseClassBodyStatement()
+		fmt.Printf("astParseClassBodyStatements subAst %+v this.Current():%v\n", subAst, this.Current())
+		if subAst != nil {
+			body = append(body, subAst)
+		} else {
+			break
+		}
+	}
+	if body != nil && len(body) != 0 {
+		return body
+	}
+	return nil
+}
+
+func (this *SansLangParser) astParseClassBodyStatement() Node {
+	mark := this.Mark()
+	ast := this.astParseClassVariableDeclaration()
+	if ast != nil {
+		return ast
+	}
+	this.Reset(mark)
+
+	ast = this.astParseClassExpressionStatement()
+	if ast != nil {
+		return ast
+	}
+	this.Reset(mark)
+	return nil
+}
+
+func (this *SansLangParser) astParseClassVariableDeclaration() Node {
+	fmt.Printf("astParseClassVariableDeclaration %v \n", this.Current())
+	// const this.age = 1
+	// const cls.age = 1
+	// const cls.new = function(){}
+	// const new = function() {}
+	if this.Expect(TokenTypeConst) || this.Expect(TokenTypeVar) {
+		op := this.Next()
+		id := this.astParseCallClassMemberExpression()
+		if id != nil {
+			assign := this.Match(TokenTypeAssign)
+			if !assign.Error() {
+				exp := this.astParseExpression()
+				if exp != nil {
+					return ClassVariableDeclaration{Kind: op.Value, Name: id, Value: exp}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (this *SansLangParser) astParseClassExpressionStatement() Node {
+	fmt.Printf("astParseClassExpressionStatement %v \n", this.Current())
+	exp := this.astParseExpression()
+	if exp != nil {
+		fmt.Printf("astParseExpressionStatement %v\n", exp)
+		return exp
 	}
 	return nil
 }
@@ -232,7 +299,16 @@ func (this *SansLangParser) astParseClassBodyStatement() Node {
 func (this *SansLangParser) astParseBlockStatement() Node {
 	lbraceToken := this.Match(TokenTypeLBrace)
 	if !lbraceToken.Error() {
-		body := this.astParseStatements()
+		body := []Node{}
+		for this.Current().Type != TokenTypeRBrace {
+			subAst := this.astParseStatement()
+			fmt.Printf("astParseBlockStatement subAst %+v this.Current():%v\n", subAst, this.Current())
+			if subAst != nil {
+				body = append(body, subAst)
+			} else {
+				break
+			}
+		}
 		this.Match(TokenTypeRBrace)
 		return BlockStatement{Body: body}
 	}
@@ -452,6 +528,96 @@ func (this *SansLangParser) astParseCallMemberExpression() Node {
 	return subAst
 }
 
+func (this *SansLangParser) astParseCallClassMemberExpression() Node {
+	// factor arguments callMemberExpressionTail
+	// factor '.' identifier callMemberExpressionTail;
+	// factor '[' expression ']' callMemberExpressionTail
+	subAst := this.astParseFactor()
+	mark := this.Mark()
+	if subAst != nil {
+		args := this.astParseArgsWithParen()
+		if args != nil {
+			n := CallExpression{Object: subAst, Args: args}
+			node := this.astParseCallClassMemberExpressionTail(n)
+			return node
+		}
+		// 点语法
+		if this.Expect(TokenTypeDot) {
+			this.Match(TokenTypeDot)
+			prop := this.astParseIdentifier()
+			if prop != nil {
+				node := MemberExpression{
+					Object:      subAst,
+					Property:    prop,
+					ElementType: "dot",
+				}
+				return this.astParseCallClassMemberExpressionTail(node)
+			}
+		}
+		this.Reset(mark)
+		// 数组
+		if this.Expect(TokenTypeLBracket) {
+			this.Match(TokenTypeLBracket)
+			prop := this.astParseExpression()
+			if prop != nil {
+				this.Match(TokenTypeRBracket)
+				node := MemberExpression{
+					Object:      subAst,
+					Property:    prop,
+					ElementType: "array",
+				}
+				return this.astParseCallClassMemberExpressionTail(node)
+			}
+		}
+	}
+	this.Reset(mark)
+	return subAst
+}
+
+func (this *SansLangParser) astParseCallClassMemberExpressionTail(node Node) Node {
+	// arguments callMemberExpressionTail
+	// （'.' identifier callMemberExpressionTail）*
+	// '[' expression ']' callMemberExpressionTail *
+	// 处理函数调用
+	mark := this.Mark()
+	args := this.astParseArgsWithParen()
+	if args != nil {
+		node = CallExpression{Object: node, Args: args}
+		return this.astParseCallMemberExpressionTail(node)
+	}
+	// 处理点语法
+	if this.Expect(TokenTypeDot) {
+		this.Match(TokenTypeDot)
+		prop := this.astParseIdentifier()
+		if prop != nil {
+			node = MemberExpression{
+				Object:      node,
+				Property:    prop,
+				ElementType: "dot",
+			}
+			return this.astParseCallMemberExpressionTail(node)
+		}
+	}
+	this.Reset(mark)
+	// 处理数组
+	if this.Expect(TokenTypeLBracket) {
+		this.Match(TokenTypeLBracket)
+		prop := this.astParseExpression()
+		if prop != nil {
+			this.Match(TokenTypeRBracket)
+			node = MemberExpression{
+				Object:      node,
+				Property:    prop,
+				ElementType: "array",
+			}
+			return this.astParseCallMemberExpressionTail(node)
+		}
+	}
+	this.Reset(mark)
+	fmt.Printf("astParseCallMemberTail %v\n", this.Current())
+	return node
+}
+
 func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 	// arguments callMemberExpressionTail
 	// （'.' identifier callMemberExpressionTail）*
@@ -649,6 +815,26 @@ func (this *SansLangParser) astParseExpressionStatement() Node {
 }
 
 func (this *SansLangParser) astParseExpression() Node {
+	// 优先级由高到低
+	// expression ->
+	// | identifier
+	// | literal
+	// | expression '[' expression ']'
+	// | expression '.' identifier
+	// | expression arguments
+	// | ( '+' | '-' | '!' ) expression
+	// | expression ( '*' | '/' | '%' ) expression
+	// | expression ( '+' | '-' ) expression
+	// | expression ( '<<' | '>>' ) expression
+	// | expression ( '<' | '>' | '<=' | '>=' ) expression
+	// | expression ( '==' | '!=' | '===' | '!==' ) expression
+	// | expression '&' expression
+	// | expression '|' expression
+	// | expression '&&' expression
+	// | expression '||' expression
+	// | assignmentExpression
+	// | expression ( '+=' | '-=' | '*=' | '/=' ) expression
+	// | '(' expression ')'
 	exp := this.astParseAssignExpression()
 	if exp != nil {
 		return exp

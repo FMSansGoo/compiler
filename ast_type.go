@@ -40,6 +40,14 @@ var (
 	AstTypeIfStatement = newAstType("IfStatement", 17)
 	// while
 	AstTypeWhileStatement = newAstType("WhileStatement", 18)
+	// for
+	AstTypeForStatement = newAstType("ForStatement", 19)
+	// ClassExpression
+	AstTypeClassExpression = newAstType("ClassExpression", 20)
+	// ClassBodyStatement
+	AstTypeClassBodyStatement = newAstType("ClassBodyStatement", 21)
+	//ClassVariableDeclaration
+	AstTypeClassVariableDeclaration = newAstType("ClassVariableDeclaration", 22)
 )
 
 func newAstType(name string, value int64) AstType {

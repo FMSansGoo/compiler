@@ -8,7 +8,7 @@ import (
 func main() {
 	test()
 	// 普通运算
-	test1()
+	//test1()
 	// 递归下降处理
 	//test2()
 	//// 优先级
@@ -29,6 +29,8 @@ func main() {
 	//test10()
 	//// array、dot
 	//test11()
+	// class
+	testClass()
 }
 
 func test() {
@@ -42,6 +44,10 @@ func test1() {
 	a = true
 	// 这时候 a 的作用域应该是什么？
 	// 如果是强类型语言要做 报错
+
+	for(var i = 0;i < 1; i += 1) {
+		a = false
+	}
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
@@ -228,9 +234,12 @@ func test7() {
 }
 func test8() {
 	lexer := SansLangLexer{}
-	lexer.Code = `while(1){
-		a = 1
-	}`
+	lexer.Code = `
+	while(1){
+		var a = 1
+	}
+	var b = 1
+`
 	tokenList := lexer.TokenList()
 	tokensLexer := TokenList{
 		Tokens: tokenList,
@@ -321,6 +330,56 @@ func test11() {
 	fmt.Println(string(jsonData))
 }
 
-func test12() {
+func testClass() {
+	complete := `
+	class A super B {
+		const cls.age = 1
+		
+		const new = function() {
+			this.gender = "boy"
+		}
+		const cls.fuck = function() {
+		
+		}
+	}
+	var a = A()
+	a.new()
+	a.fuck()
+	`
+	fmt.Println(complete)
+	lexer := SansLangLexer{}
+	lexer.Code = `
+	class A {
+		const cls.age = 1
+		const new = function() {
+		}
+	}
 
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := TokenList{
+		Tokens: tokenList,
+	}
+	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	// 将节点转换为JSON字符串
+	jsonData, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Println("转换为JSON时出错:", err)
+		return
+	}
+
+	// 打印JSON字符串
+	fmt.Println(string(jsonData))
+	fmt.Println("====================== parser end =======================")
+	fmt.Println("====================== NewSemanticAnalysis init =======================")
+	semanticAnalysis := NewSemanticAnalysis(ast)
+	semanticAnalysis.visit()
+	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }

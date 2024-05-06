@@ -32,10 +32,11 @@ func (s *Scope) SetParent(parent *Scope) {
 
 // 向作用域中添加符号
 func (s *Scope) AddSymbol(varType string, name string, value ValueType) {
-	// 作用域中已经存在该符号
-	if symbol, ok := s.Table[name]; ok && symbol.Name == name && symbol.Value == ValueTypeFunctionExpression {
+	// func or class 作用域中已经存在该符号
+	if symbol, ok := s.Table[name]; ok && symbol.Name == name && (symbol.Value == ValueTypeFunctionExpression || symbol.Value == ValueTypeClassExpression) {
 		logError("not allow the same function", name, s.ScopeName)
 	}
+
 	s.Table[name] = Symbol{VarType: varType, Name: name, Value: value}
 }
 

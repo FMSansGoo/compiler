@@ -76,6 +76,18 @@ func (vd VariableDeclaration) Type() string {
 	return "VariableDeclaration"
 }
 
+// ClassDeclaration节点结构
+type ClassVariableDeclaration struct {
+	Kind  string // kind属性
+	Name  Node   // name属性
+	Value Node   // value属性
+}
+
+// 实现Node接口的Type方法
+func (vd ClassVariableDeclaration) Type() string {
+	return "ClassVariableDeclaration"
+}
+
 // AssignmentExpression节点结构
 type AssignmentExpression struct {
 	Operator string // operator属性

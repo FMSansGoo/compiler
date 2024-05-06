@@ -28,6 +28,7 @@ var (
 	ValueTypeMemberExpression   = newValueType("MemberExpression", 12)
 	ValueTypeIfStatement        = newValueType("IfStatement", 13)
 	ValueTypeWhileStatement     = newValueType("WhileStatement", 14)
+	ValueTypeClassExpression    = newValueType("ClassExpression", 15)
 )
 
 func newValueType(name string, value int64) ValueType {
