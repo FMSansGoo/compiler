@@ -29,8 +29,10 @@ func main() {
 	//test10()
 	//// array、dot
 	//test11()
+	// func return
+	test12()
 	// class
-	testClass()
+	//testClass()
 }
 
 func test() {
@@ -330,6 +332,58 @@ func test11() {
 	fmt.Println(string(jsonData))
 }
 
+func test12() {
+	complete := `
+	class A super B {
+		const cls.age = 1
+		
+		const new = function() {
+			this.gender = "boy"
+		}
+		const cls.fuck = function() {
+		
+		}
+	}
+	var a = A()
+	a.new()
+	a.fuck()
+	`
+	fmt.Println(complete)
+	lexer := SansLangLexer{}
+	lexer.Code = `
+	const main = function() {
+		var a = 1
+		return a
+	}
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := TokenList{
+		Tokens: tokenList,
+	}
+	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	// 将节点转换为JSON字符串
+	jsonData, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Println("转换为JSON时出错:", err)
+		return
+	}
+
+	// 打印JSON字符串
+	fmt.Println(string(jsonData))
+	fmt.Println("====================== parser end =======================")
+	fmt.Println("====================== NewSemanticAnalysis init =======================")
+	semanticAnalysis := NewSemanticAnalysis(ast)
+	semanticAnalysis.visit()
+	fmt.Println("====================== NewSemanticAnalysis end =======================")
+}
+
 func testClass() {
 	complete := `
 	class A super B {
@@ -354,7 +408,6 @@ func testClass() {
 		const new = function() {
 		}
 	}
-
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

@@ -336,7 +336,14 @@ func (this *SansLangParser) astParseReturnStatement() Node {
 	fmt.Printf("astParseReturnStatement %v\n", this.Current())
 	returnToken := this.Match(TokenTypeReturn)
 	if !returnToken.Error() {
-		return ReturnStatement{}
+		if this.Expect(TokenTypeRBrace) {
+			return ReturnStatement{Value: nil}
+		} else {
+			exp := this.astParseExpression()
+			if exp != nil {
+				return ReturnStatement{Value: exp}
+			}
+		}
 	}
 	return nil
 }

@@ -2,9 +2,10 @@ package main
 
 // 符号表项
 type Symbol struct {
-	VarType string
-	Name    string
-	Value   ValueType
+	VarType   string    // const var
+	Name      string    // 变量名
+	Value     ValueType // 变量类型
+	ExtraInfo ValueType // 变量额外信息（比如函数的返回值类型）
 }
 
 // 作用域结构
@@ -31,13 +32,13 @@ func (s *Scope) SetParent(parent *Scope) {
 }
 
 // 向作用域中添加符号
-func (s *Scope) AddSymbol(varType string, name string, value ValueType) {
+func (s *Scope) AddSymbol(varType string, name string, value ValueType, extraInfo ValueType) {
 	// func or class 作用域中已经存在该符号
 	if symbol, ok := s.Table[name]; ok && symbol.Name == name && (symbol.Value == ValueTypeFunctionExpression || symbol.Value == ValueTypeClassExpression) {
-		logError("not allow the same function", name, s.ScopeName)
+		logError("not allow the same function or class", name, s.ScopeName)
 	}
 
-	s.Table[name] = Symbol{VarType: varType, Name: name, Value: value}
+	s.Table[name] = Symbol{VarType: varType, Name: name, Value: value, ExtraInfo: extraInfo}
 }
 
 // 查找符号

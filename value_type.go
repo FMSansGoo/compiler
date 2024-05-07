@@ -29,6 +29,7 @@ var (
 	ValueTypeIfStatement        = newValueType("IfStatement", 13)
 	ValueTypeWhileStatement     = newValueType("WhileStatement", 14)
 	ValueTypeClassExpression    = newValueType("ClassExpression", 15)
+	ValueTypeReturnStatement    = newValueType("ReturnStatement", 16)
 )
 
 func newValueType(name string, value int64) ValueType {

@@ -130,6 +130,7 @@ func (bs FunctionExpression) Type() string {
 }
 
 type ReturnStatement struct {
+	Value Node
 }
 
 func (bs ReturnStatement) Type() string {

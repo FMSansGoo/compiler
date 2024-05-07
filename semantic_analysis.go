@@ -97,7 +97,7 @@ func (this *SemanticAnalysis) visitClassExpression(node Node) ValueType {
 		if classBody.Type() == AstTypeClassBodyStatement.Name() {
 			this.visitClassBodyStatement(classBody)
 		}
-		this.CurrentScope.AddSymbol("const", className, classType)
+		this.CurrentScope.AddSymbol("const", className, classType, ValueTypeError)
 	}
 	return ValueTypeError
 }
@@ -162,7 +162,7 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 	switch right.Type() {
 	// 访问函数
 	case AstTypeFunctionExpression.Name():
-		valueType = this.visitFunctionExpression(right)
+		valueType, _ = this.visitFunctionExpression(right)
 	case AstTypeBinaryExpression.Name():
 		valueType = this.visitBinaryExpression(right)
 	case AstTypeNumberLiteral.Name():
@@ -190,7 +190,7 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 			return
 		}
 	}
-	this.CurrentScope.AddSymbol(varType, variableName, valueType)
+	this.CurrentScope.AddSymbol(varType, variableName, valueType, ValueTypeError)
 
 	fmt.Printf("this.CurrentScope: %+v\n", this.CurrentScope)
 	return
@@ -238,45 +238,10 @@ func (this *SemanticAnalysis) visitAssignmentExpression(node Node) {
 		logError("variable cannot be reassigned to another type", variableName)
 		return
 	}
-	this.CurrentScope.AddSymbol(varType, variableName, valueType)
+	this.CurrentScope.AddSymbol(varType, variableName, valueType, ValueTypeError)
 	return
 }
 
-func (this *SemanticAnalysis) visitFunctionExpression(node Node) ValueType {
-	params := node.(FunctionExpression).Params
-	body := node.(FunctionExpression).Body
-	logInfo("visitFunctionExpression", params, body)
-	if body.Type() == AstTypeBlockStatement.Name() {
-		this.visitBlockStatement(body)
-		return ValueTypeFunctionExpression
-	}
-
-	return ValueTypeError
-}
-
-func (this *SemanticAnalysis) visitBlockStatement(node Node) {
-	// 开始新的作用域
-	// 进入 block 就是一个新的作用域
-	funcScope := NewScope()
-	funcScope.SetParent(this.CurrentScope)
-	this.CurrentScope = funcScope
-	logInfo("visitBlockStatement visit node", node.Type())
-	for _, item := range node.(BlockStatement).Body {
-		logInfo("visitBlockStatement visit item", item.Type())
-		switch item.Type() {
-		// 变量定义
-		case AstTypeVariableDeclaration.Name():
-			this.visitVariableDeclaration(item)
-		// 赋值
-		case AstTypeAssignmentExpression.Name():
-			this.visitAssignmentExpression(item)
-		}
-	}
-	// 出来 block 了，就要回滚到上一个作用域中
-	this.CurrentScope = this.CurrentScope.Parent
-	logInfo("visitBlockStatement current Scope", this.CurrentScope)
-	return
-}
 func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 	//type VariableDeclaration struct {
 	//	Kind  string // kind属性
@@ -293,10 +258,12 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 
 	valueType := ValueTypeError
 	right := node.(VariableDeclaration).Value
+
+	extraInfoValueType := ValueTypeError
 	switch right.Type() {
-	// 访问函数
+	// 访问函数，函数的返回类型
 	case AstTypeFunctionExpression.Name():
-		valueType = this.visitFunctionExpression(right)
+		valueType, extraInfoValueType = this.visitFunctionExpression(right)
 	case AstTypeBinaryExpression.Name():
 		valueType = this.visitBinaryExpression(right)
 	case AstTypeNumberLiteral.Name():
@@ -324,10 +291,98 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 			return
 		}
 	}
-	this.CurrentScope.AddSymbol(varType, variableName, valueType)
+	this.CurrentScope.AddSymbol(varType, variableName, valueType, extraInfoValueType)
 
 	fmt.Printf("this.CurrentScope: %+v\n", this.CurrentScope)
 	return
+}
+
+func (this *SemanticAnalysis) visitFunctionExpression(node Node) (ValueType, ValueType) {
+	params := node.(FunctionExpression).Params
+	body := node.(FunctionExpression).Body
+	logInfo("visitFunctionExpression", params, body)
+	funcReturnType := ValueTypeNull
+	if body.Type() == AstTypeBlockStatement.Name() {
+		var hasReturn bool
+		hasReturn, funcReturnType = this.visitBlockStatement(body)
+		if hasReturn {
+			return ValueTypeFunctionExpression, funcReturnType
+		}
+	}
+
+	return ValueTypeError, ValueTypeError
+}
+
+func (this *SemanticAnalysis) visitBlockStatement(node Node) (hasReturn bool, returnValueType ValueType) {
+	// 开始新的作用域
+	// 进入 block 就是一个新的作用域
+	funcScope := NewScope()
+	funcScope.SetParent(this.CurrentScope)
+	this.CurrentScope = funcScope
+
+	logInfo("visitBlockStatement visit node", node.Type())
+	for _, item := range node.(BlockStatement).Body {
+		logInfo("visitBlockStatement visit item", item.Type())
+		switch item.Type() {
+		// 变量定义
+		case AstTypeVariableDeclaration.Name():
+			this.visitVariableDeclaration(item)
+		// 赋值
+		case AstTypeAssignmentExpression.Name():
+			this.visitAssignmentExpression(item)
+		//return
+		case AstTypeReturnStatement.Name():
+			hasReturn = true
+			returnValueType = this.visitReturnStatement(item)
+		}
+	}
+	logInfo("visitBlockStatement before current Scope", this.CurrentScope)
+	// 出来 block 了，就要回滚到上一个作用域中
+	this.CurrentScope = this.CurrentScope.Parent
+	logInfo("visitBlockStatement after current Scope", this.CurrentScope)
+	return
+}
+
+func (this *SemanticAnalysis) visitReturnStatement(node Node) ValueType {
+	if node.Type() == AstTypeReturnStatement.Name() {
+		v := node.(ReturnStatement).Value
+
+		var rightType ValueType
+		switch v.Type() {
+		case AstTypeBinaryExpression.Name():
+			rightType = this.visitBinaryExpression(v)
+		case AstTypeNumberLiteral.Name():
+			rightType = this.visitNumberLiteral(v)
+		case AstTypeNullLiteral.Name():
+			rightType = this.visitNullLiteral(v)
+		case AstTypeBooleanLiteral.Name():
+			rightType = this.visitBooleanLiteral(v)
+		case AstTypeStringLiteral.Name():
+			rightType, _ = this.visitStringLiteral(v)
+		case AstTypeArrayLiteral.Name():
+			rightType = this.visitArrayLiteral(v)
+		case AstTypeUnaryExpression.Name():
+			rightType = this.visitUnaryExpression(v)
+		case AstTypeDictLiteral.Name():
+			rightType = this.visitDictLiteral(v)
+		case AstTypeIdentifier.Name():
+			var varName string
+			_, varName, _ = this.visitIdentifier(v)
+			symbol, ok := this.CurrentScope.LookupSymbol(varName)
+			if ok {
+				rightType = symbol.Value
+			} else {
+				logError("undeclared variable", varName)
+				return ValueTypeError
+			}
+		default:
+			logError("not support return value type", v.Type())
+			return ValueTypeError
+		}
+		logInfo("rightType", rightType)
+		return rightType
+	}
+	return ValueTypeError
 }
 
 func (this *SemanticAnalysis) visitArrayLiteral(node Node) ValueType {
@@ -653,7 +708,7 @@ func (this *SemanticAnalysis) visitPropertyAssignment(node Node) (valueType Valu
 		v := node.(PropertyAssignment).Value
 		switch v.Type() {
 		case AstTypeFunctionExpression.Name():
-			vType = this.visitFunctionExpression(v)
+			vType, _ = this.visitFunctionExpression(v)
 		case AstTypeBinaryExpression.Name():
 			vType = this.visitBinaryExpression(v)
 		case AstTypeNumberLiteral.Name():

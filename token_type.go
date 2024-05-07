@@ -57,7 +57,7 @@ var (
 	TokenTypeComma             = newTokenType("comma", 36)    // ,
 	TokenTypeColon             = newTokenType("colon", 37)    // :
 	TokenTypeLBrace            = newTokenType("lbrace", 38)   // {
-	TokenTypeRBrace            = newTokenType("rbrace", 39)   // {
+	TokenTypeRBrace            = newTokenType("rbrace", 39)   // }
 	TokenTypeLBracket          = newTokenType("lbracket", 40) // [
 	TokenTypeRBracket          = newTokenType("rbracket", 41) // ]
 	TokenTypeEquals            = newTokenType("equals", 42)
