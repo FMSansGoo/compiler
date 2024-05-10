@@ -81,9 +81,7 @@ func (this *SemanticAnalysis) visitClassExpression(node Node) ValueType {
 		superClassType := ValueTypeClassExpression
 		// 1.检查 super 的 class 是否存在
 		if superClass != nil {
-			logInfo("visitClassExpression superClass", superClass)
 			superClassType, superClassName, _ = this.visitIdentifier(superClass)
-			logInfo("visitClassExpression superClass", superClassType, superClassName)
 
 			// 表示现在找不到这个类
 			if superClassType == ValueTypeIdentifier {
@@ -108,6 +106,12 @@ func (this *SemanticAnalysis) visitClassBodyStatement(node Node) {
 	funcScope := NewScope()
 	funcScope.SetParent(this.CurrentScope)
 	this.CurrentScope = funcScope
+
+	// 这里用 defer 主要是怕提前 return，作用域没回滚
+	defer func() {
+		this.CurrentScope = this.CurrentScope.Parent
+	}()
+
 	logInfo("visitClassBodyStatement visit node", node.Type())
 	for _, item := range node.(ClassBodyStatement).Body {
 		logInfo("visitClassBodyStatement visit item", item.Type())
@@ -120,14 +124,13 @@ func (this *SemanticAnalysis) visitClassBodyStatement(node Node) {
 			this.visitAssignmentExpression(item)
 		}
 	}
-	// 出来 block 了，就要回滚到上一个作用域中
-	this.CurrentScope = this.CurrentScope.Parent
+
 	logInfo("visitClassBodyStatement current Scope", this.CurrentScope)
 	return
 }
 
 func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
-	//type VariableDeclaration struct {
+	//type visitClassVariableDeclaration struct {
 	//	Kind  string // kind属性
 	//	Name  Node   // name属性
 	//	Value Node   // value属性
@@ -135,17 +138,20 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 	varType := node.(ClassVariableDeclaration).Kind
 	left := node.(ClassVariableDeclaration).Name
 	var variableName string
+	extraVariableType := ValueTypeError
 	switch left.Type() {
 	case AstTypeMemberExpression.Name():
-		// 这里来做 . 语法和 this \ cls 的判别
+		// 这里来做 . 语法和 this / cls 的判别
 		if left.(MemberExpression).ElementType == "dot" {
 			if left.(MemberExpression).Object.Type() == AstTypeIdentifier.Name() {
-				//todo 这里暂时用 property 当做变量名，其实应该用类变量名
-				_, variableName, _ = this.visitIdentifier(left.(MemberExpression).Property)
-				if variableName == TokenTypeCls.Name() || variableName == TokenTypeThis.Name() {
-
+				var specificTypeName string
+				_, specificTypeName, _ = this.visitIdentifier(left.(MemberExpression).Object)
+				if specificTypeName == TokenTypeCls.Name() || specificTypeName == TokenTypeThis.Name() {
+					// classPropertyName
+					_, variableName, _ = this.visitIdentifier(left.(MemberExpression).Property)
+					extraVariableType = ValueTypeClassVariable
 				} else {
-					logError("invalid member expression", left)
+					logError("invalid member expression", left, variableName)
 					return
 				}
 			}
@@ -162,7 +168,7 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 	switch right.Type() {
 	// 访问函数
 	case AstTypeFunctionExpression.Name():
-		valueType, _ = this.visitFunctionExpression(right)
+		valueType, extraVariableType = this.visitFunctionExpression(right)
 	case AstTypeBinaryExpression.Name():
 		valueType = this.visitBinaryExpression(right)
 	case AstTypeNumberLiteral.Name():
@@ -190,9 +196,9 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 			return
 		}
 	}
-	this.CurrentScope.AddSymbol(varType, variableName, valueType, ValueTypeError)
+	this.CurrentScope.AddSymbol(varType, variableName, valueType, extraVariableType)
 
-	fmt.Printf("this.CurrentScope: %+v\n", this.CurrentScope)
+	fmt.Printf("visitClassVariableDeclaration this.CurrentScope: %+v\n", this.CurrentScope)
 	return
 }
 
@@ -293,33 +299,55 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 	}
 	this.CurrentScope.AddSymbol(varType, variableName, valueType, extraInfoValueType)
 
-	fmt.Printf("this.CurrentScope: %+v\n", this.CurrentScope)
+	fmt.Printf("visitVariableDeclaration this.CurrentScope: %+v\n", this.CurrentScope)
 	return
 }
 
-func (this *SemanticAnalysis) visitFunctionExpression(node Node) (ValueType, ValueType) {
+func (this *SemanticAnalysis) visitFunctionExpression(node Node) (funcExpression ValueType, funcReturnType ValueType) {
 	params := node.(FunctionExpression).Params
+
+	// 开始新的作用域
+	funcScope := NewScope()
+	funcScope.SetParent(this.CurrentScope)
+	this.CurrentScope = funcScope
+	// 这里用 defer 主要是怕提前 return，作用域没回滚
+	defer func() {
+		this.CurrentScope = this.CurrentScope.Parent
+	}()
+
+	for _, param := range params {
+		if param.Type() != AstTypeIdentifier.Name() {
+			logError("param must be identifier", param.Type())
+		}
+		valueType, variableName, varType := this.visitIdentifier(param)
+		this.CurrentScope.AddSymbol(varType, variableName, valueType, ValueTypeError)
+	}
 	body := node.(FunctionExpression).Body
 	logInfo("visitFunctionExpression", params, body)
-	funcReturnType := ValueTypeNull
+	funcReturnType = ValueTypeNull
 	if body.Type() == AstTypeBlockStatement.Name() {
-		var hasReturn bool
-		hasReturn, funcReturnType = this.visitBlockStatement(body)
-		if hasReturn {
-			return ValueTypeFunctionExpression, funcReturnType
-		}
+		funcReturnType = this.visitBlockStatement(body)
+		return ValueTypeFunctionExpression, funcReturnType
 	}
 
 	return ValueTypeError, ValueTypeError
 }
 
-func (this *SemanticAnalysis) visitBlockStatement(node Node) (hasReturn bool, returnValueType ValueType) {
+func (this *SemanticAnalysis) visitBlockStatement(node Node) (returnValueType ValueType) {
 	// 开始新的作用域
 	// 进入 block 就是一个新的作用域
 	funcScope := NewScope()
 	funcScope.SetParent(this.CurrentScope)
 	this.CurrentScope = funcScope
 
+	// 防止中途退出作用域没返回
+	defer func() {
+		logInfo("visitBlockStatement after current Scope", this.CurrentScope)
+		this.CurrentScope = this.CurrentScope.Parent
+	}()
+
+	// 默认函数返回都是 null
+	returnValueType = ValueTypeNull
 	logInfo("visitBlockStatement visit node", node.Type())
 	for _, item := range node.(BlockStatement).Body {
 		logInfo("visitBlockStatement visit item", item.Type())
@@ -330,22 +358,30 @@ func (this *SemanticAnalysis) visitBlockStatement(node Node) (hasReturn bool, re
 		// 赋值
 		case AstTypeAssignmentExpression.Name():
 			this.visitAssignmentExpression(item)
+		case AstTypeBreakStatement.Name():
+			this.visitBreakStatement(item)
 		//return
 		case AstTypeReturnStatement.Name():
-			hasReturn = true
 			returnValueType = this.visitReturnStatement(item)
 		}
 	}
 	logInfo("visitBlockStatement before current Scope", this.CurrentScope)
-	// 出来 block 了，就要回滚到上一个作用域中
-	this.CurrentScope = this.CurrentScope.Parent
-	logInfo("visitBlockStatement after current Scope", this.CurrentScope)
 	return
+}
+
+func (this *SemanticAnalysis) visitBreakStatement(node Node) ValueType {
+	if node.Type() == AstTypeBreakStatement.Name() {
+		return ValueTypeNull
+	}
+	return ValueTypeError
 }
 
 func (this *SemanticAnalysis) visitReturnStatement(node Node) ValueType {
 	if node.Type() == AstTypeReturnStatement.Name() {
 		v := node.(ReturnStatement).Value
+		if v == nil {
+			return ValueTypeNull
+		}
 
 		var rightType ValueType
 		switch v.Type() {
@@ -881,6 +917,15 @@ func (this *SemanticAnalysis) visitWhileStatement(node Node) ValueType {
 
 func (this *SemanticAnalysis) visitForStatement(node Node) ValueType {
 	if node.Type() == AstTypeForStatement.Name() {
+		// 开始新的作用域
+		funcScope := NewScope()
+		funcScope.SetParent(this.CurrentScope)
+		this.CurrentScope = funcScope
+		// 这里用 defer 主要是怕提前 return，作用域没回滚
+		defer func() {
+			this.CurrentScope = this.CurrentScope.Parent
+		}()
+
 		init := node.(ForStatement).Init
 		initType := ValueTypeError
 		switch init.Type() {

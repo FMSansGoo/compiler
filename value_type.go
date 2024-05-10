@@ -30,6 +30,8 @@ var (
 	ValueTypeWhileStatement     = newValueType("WhileStatement", 14)
 	ValueTypeClassExpression    = newValueType("ClassExpression", 15)
 	ValueTypeReturnStatement    = newValueType("ReturnStatement", 16)
+
+	ValueTypeClassVariable = newValueType("ClassVariable", 16)
 )
 
 func newValueType(name string, value int64) ValueType {

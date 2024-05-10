@@ -50,6 +50,8 @@ var (
 	AstTypeClassVariableDeclaration = newAstType("ClassVariableDeclaration", 22)
 	// return
 	AstTypeReturnStatement = newAstType("ReturnStatement", 23)
+	// break
+	AstTypeBreakStatement = newAstType("BreakStatement", 24)
 )
 
 func newAstType(name string, value int64) AstType {

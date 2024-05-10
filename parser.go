@@ -296,13 +296,32 @@ func (this *SansLangParser) astParseClassExpressionStatement() Node {
 	return nil
 }
 
+func (this *SansLangParser) astParseForBlockStatement() Node {
+	lbraceToken := this.Match(TokenTypeLBrace)
+	if !lbraceToken.Error() {
+		body := []Node{}
+		for this.Current().Type != TokenTypeRBrace {
+			subAst := this.astParseStatement()
+			fmt.Printf("astParseBlockStatement subAst %+v this.Current:%v\n", subAst, this.Current())
+			if subAst != nil {
+				body = append(body, subAst)
+			} else {
+				break
+			}
+		}
+		this.Match(TokenTypeRBrace)
+		return BlockStatement{Body: body}
+	}
+	return nil
+}
+
 func (this *SansLangParser) astParseBlockStatement() Node {
 	lbraceToken := this.Match(TokenTypeLBrace)
 	if !lbraceToken.Error() {
 		body := []Node{}
 		for this.Current().Type != TokenTypeRBrace {
 			subAst := this.astParseStatement()
-			fmt.Printf("astParseBlockStatement subAst %+v this.Current():%v\n", subAst, this.Current())
+			fmt.Printf("astParseBlockStatement subAst %+v this.Current:%v\n", subAst, this.Current())
 			if subAst != nil {
 				body = append(body, subAst)
 			} else {
@@ -359,15 +378,13 @@ func (this *SansLangParser) astParseIfStatement() Node {
 			if !rp.Error() {
 				consequent := this.astParseBlockStatement()
 				if consequent != nil {
-					pos := this.Mark()
 					var alternate Node
 					if this.Expect(TokenTypeElse) {
 						this.Match(TokenTypeElse)
-						alternate = this.astParseBlockStatement()
-						if alternate == nil {
+						if this.Expect(TokenTypeIf) {
 							alternate = this.astParseIfStatement()
 						} else {
-							this.Reset(pos)
+							alternate = this.astParseBlockStatement()
 						}
 					}
 					return IfStatement{Condition: condition, Consequent: consequent, Alternate: alternate}
@@ -877,6 +894,11 @@ func (this *SansLangParser) astParseLiteral() Node {
 	dictValue := this.astParseDict()
 	if dictValue != nil {
 		return dictValue
+	}
+
+	identifier := this.astParseIdentifier()
+	if identifier != nil {
+		return identifier
 	}
 
 	return nil

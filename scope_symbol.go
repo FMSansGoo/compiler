@@ -5,7 +5,7 @@ type Symbol struct {
 	VarType   string    // const var
 	Name      string    // 变量名
 	Value     ValueType // 变量类型
-	ExtraInfo ValueType // 变量额外信息（比如函数的返回值类型）
+	ExtraInfo ValueType // 变量额外信息（现在只用在1.函数的返回值类型2.类的一些变量属性）
 }
 
 // 作用域结构
