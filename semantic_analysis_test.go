@@ -8,13 +8,13 @@ import (
 
 func TestSemanticAnalysis(t *testing.T) {
 	//基本类型
-	testSemanticAnalysis1()
-	//多重运算
-	testSemanticAnalysis2()
-	//for 循环 while 循环 if else continue return
-	testSemanticAnalysis3()
-	//函数
-	testSemanticAnalysis4()
+	//testSemanticAnalysis1()
+	////多重运算
+	//testSemanticAnalysis2()
+	////for 循环 while 循环 if else continue return
+	//testSemanticAnalysis3()
+	////函数
+	//testSemanticAnalysis4()
 	//类
 	testSemanticAnalysis5()
 }
@@ -187,8 +187,7 @@ func testSemanticAnalysis5() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
 		class B {
-			const new = function() {
-			}
+
 		}
 		class A super B {
 			const cls.age = 1

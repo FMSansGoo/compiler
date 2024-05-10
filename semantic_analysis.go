@@ -125,6 +125,12 @@ func (this *SemanticAnalysis) visitClassBodyStatement(node Node) {
 		}
 	}
 
+	// class 来查找一下有没有 new 函数，没有就报错
+	symbol, isInit := this.CurrentScope.LookupSymbol("new")
+	if !isInit || symbol.Value != ValueTypeFunctionExpression {
+		logError("new class error, can not find new function")
+	}
+
 	logInfo("visitClassBodyStatement current Scope", this.CurrentScope)
 	return
 }
