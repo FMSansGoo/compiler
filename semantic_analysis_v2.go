@@ -124,7 +124,7 @@ func (this *SemanticAnalysisV2) visitVariableDeclaration(node Node) {
 	// 先不处理常量方法
 	this.CurrentScope.AddSignature(variableName, valueType, false, varType)
 
-	fmt.Printf("visitVariableDeclaration this.CurrentScope")
+	fmt.Printf("in visitVariableDeclaration this.CurrentScope")
 	this.CurrentScope.LogNowScope()
 	return
 }
@@ -930,7 +930,7 @@ func (this *SemanticAnalysisV2) visitPropertyAssignment(node Node) (vType AllTyp
 	return vType, keyName
 }
 
-// 调用
+// 调用函数
 func (this *SemanticAnalysisV2) visitCallExpression(node Node) (AllType, string) {
 	if node.Type() != AstTypeCallExpression.Name() {
 		return UnKnownType{}, ""
@@ -938,7 +938,9 @@ func (this *SemanticAnalysisV2) visitCallExpression(node Node) (AllType, string)
 	if node.(CallExpression).Object.Type() == AstTypeMemberExpression.Name() {
 		return this.visitMemberExpression(node.(CallExpression).Object)
 	} else if node.(CallExpression).Object.Type() == AstTypeIdentifier.Name() {
+
 		valueType, variableName, _ := this.visitIdentifier(node.(CallExpression).Object)
+		// 如果是函数就是直接调用它返回值
 		functionValueType := FunctionType{}
 		if valueType.ValueType() == functionValueType.ValueType() {
 			return valueType.(FunctionType).ReturnType, variableName
@@ -950,49 +952,54 @@ func (this *SemanticAnalysisV2) visitCallExpression(node Node) (AllType, string)
 }
 
 // Todo array dot 语法 [] .
+// 这里写的有点乱，要看看怎么搞比较好
 func (this *SemanticAnalysisV2) visitMemberExpression(node Node) (AllType, string) {
-	//var variableName string
-	//if node.Type() == AstTypeMemberExpression.Name() {
-	//	et := node.(MemberExpression).ElementType
-	//	switch et {
-	//	case "dot":
-	//		logInfo("visitMemberExpression node.(before)", node.(MemberExpression))
-	//		if node.(MemberExpression).Object.Type() == AstTypeIdentifier.Name() {
-	//			var specificTypeName string
-	//			_, specificTypeName, _ = this.visitIdentifier(node.(MemberExpression).Object)
-	//			logInfo("visitMemberExpression node.(MemberExpression)", node.(MemberExpression))
-	//			if specificTypeName == TokenTypeCls.Name() || specificTypeName == TokenTypeThis.Name() {
-	//				//logInfo("visitMemberExpression node.(MemberExpression).Property", node.(MemberExpression).Property)
-	//				//// classPropertyName
-	//				//var variableValueType = ValueTypeIdentifier
-	//				//variableValueType, variableName, _ = this.visitIdentifier(node.(MemberExpression).Property)
-	//				//return variableValueType, variableName
-	//			} else {
-	//				//// 1.处理.new()
-	//				//var variableValueType = ValueTypeIdentifier
-	//				//variableValueType, variableName, _ = this.visitIdentifier(node.(MemberExpression).Property)
-	//				//logInfo("visitMemberExpression variableName", variableValueType, variableName)
-	//				//if variableName == TokenTypeNew.Name() {
-	//				//	variableValueType, _, _ = this.visitIdentifier(node.(MemberExpression).Object)
-	//				//	return variableValueType, ""
-	//				//}
-	//				// 2.处理类方法
-	//				if classScope, ok := this.CurrentScope.LookupScope(specificTypeName); ok {
-	//					for _, subScope := range classScope.SubScopes {
-	//						if symbol, ok1 := subScope.LookupSymbol(variableName); ok1 {
-	//							logInfo("visitMemberExpression subScope symbol", symbol)
-	//							return symbol.ExtraInfo, variableName
-	//						}
-	//					}
-	//				}
-	//				return variableValueType, variableName
-	//			}
-	//		}
-	//
-	//	case "array":
-	//	}
-	//	return UnKnownType{}, ""
-	//}
+	var variableName string
+	if node.Type() != AstTypeMemberExpression.Name() {
+		return UnKnownType{}, ""
+	}
+	et := node.(MemberExpression).ElementType
+	switch et {
+	case "dot":
+		//logInfo("visitMemberExpression node.(before)", node.(MemberExpression))
+		var memberName string
+		var memberType AllType
+		memberType, memberName, _ = this.visitIdentifier(node.(MemberExpression).Object)
+		// 有可能是 this、cls 这类，也有可能是实例化的名字
+		if memberName == TokenTypeCls.Name() || memberName == TokenTypeThis.Name() {
+			var variableType AllType
+			variableType, variableName, _ = this.visitIdentifier(node.(MemberExpression).Property)
+			return variableType, variableName
+		} else {
+			// 1.处理.new()
+			var variableValueType AllType
+			var propertyName string
+			variableValueType, propertyName, _ = this.visitIdentifier(node.(MemberExpression).Property)
+			logInfo("visitMemberExpression variableName", variableValueType, variableName)
+			if propertyName == TokenTypeNew.Name() {
+				variableValueType, _, _ = this.visitIdentifier(node.(MemberExpression).Object)
+				return InstanceType{
+					ClassType: ClassType{
+						MemberSignatures: variableValueType.(ClassType).MemberSignatures,
+						SuperType:        variableValueType.(ClassType).SuperType,
+					},
+				}, propertyName
+			}
+			// 2.处理类方法
+			ins := InstanceType{}
+			if memberType.ValueType() == ins.ValueType() {
+				for _, signature := range memberType.(InstanceType).ClassType.MemberSignatures {
+					if signature.Name == propertyName {
+						return signature.ReturnType, propertyName
+					}
+				}
+			}
+			// 3.暂时没处理
+			return UnKnownType{}, ""
+		}
+
+	case "array":
+	}
 	return UnKnownType{}, ""
 }
 
@@ -1091,23 +1098,7 @@ func (this *SemanticAnalysisV2) visitClassVariableDeclaration(node Node) Signatu
 	var variableName string
 	switch left.Type() {
 	case AstTypeMemberExpression.Name():
-		// 这里来做 . 语法和 this / cls 的判别
-		if left.(MemberExpression).ElementType == "dot" {
-			if left.(MemberExpression).Object.Type() == AstTypeIdentifier.Name() {
-				var specificTypeName string
-				_, specificTypeName, _ = this.visitIdentifier(left.(MemberExpression).Object)
-				if specificTypeName == TokenTypeCls.Name() || specificTypeName == TokenTypeThis.Name() {
-					// classPropertyName
-					_, variableName, _ = this.visitIdentifier(left.(MemberExpression).Property)
-				} else {
-					logError("invalid member expression", left, variableName)
-					return Signature{}
-				}
-			}
-		} else {
-			logError("invalid member expression", left)
-			return Signature{}
-		}
+		_, variableName = this.visitMemberExpression(left)
 	case AstTypeIdentifier.Name():
 		_, variableName, _ = this.visitIdentifier(left)
 	default:

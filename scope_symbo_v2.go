@@ -51,22 +51,20 @@ func (s *ScopeV2) LookupSignature(name string) (Signature, bool) {
 
 // 输出当前作用域所有符号 + symbol
 func (s *ScopeV2) LogNowScope() {
-	str := fmt.Sprintf("ScopeV2:")
+	str := fmt.Sprintf("\nScopeV2:")
 	if len(s.Table) == 0 {
-		str += fmt.Sprintf("Empty")
+		str += fmt.Sprintf("Empty\n")
 	}
 	for name, signature := range s.Table {
 		retType := signature.ReturnType.ValueType()
 		funType := FunctionType{}.ValueType()
 		classType := ClassType{}.ValueType()
-		//str += fmt.Sprintf("(name: %s, signature:%+v)", name, signature)
-
 		if retType == funType {
-			str += fmt.Sprintf("(name: %s, func signature RetType: %+v signature:%+v)", name, signature.ReturnType.(FunctionType).ReturnType.ValueType(), signature)
+			str += fmt.Sprintf("(name: %s, func signature RetType: %+v signature:%+v)\n", name, signature.ReturnType.(FunctionType).ReturnType.ValueType(), signature)
 		} else if retType == classType {
-			str += fmt.Sprintf("(name: %s, class memberType: %+v signature:%+v)", name, signature.ReturnType.(ClassType).MemberSignatures, signature)
+			str += fmt.Sprintf("(name: %s, class memberType: %+v signature:%+v)\n", name, signature.ReturnType.(ClassType).MemberSignatures, signature)
 		} else {
-			str += fmt.Sprintf("(name: %s, signature RetType: %+v signature:%+v)", name, signature.ReturnType.ValueType(), signature)
+			str += fmt.Sprintf("(name: %s, signature RetType: %+v signature:%+v)\n", name, signature.ReturnType.ValueType(), signature)
 		}
 	}
 	fmt.Printf("%v\n", str)
