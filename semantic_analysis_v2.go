@@ -45,9 +45,10 @@ func (this *SemanticAnalysisV2) visitProgram(body []Node) {
 		//// 访问 block
 		case AstTypeBlockStatement.Name():
 			this.visitBlockStatement(item)
-		//// 访问 class
-		//case AstTypeClassExpression.Name():
-		//	this.visitClassExpression(item)
+		// 访问 class
+		case AstTypeClassExpression.Name():
+			this.visitClassExpression(item)
+		// 调用函数
 		case AstTypeCallExpression.Name():
 			this.visitCallExpression(item)
 		default:
@@ -190,7 +191,6 @@ func (this *SemanticAnalysisV2) visitAssignmentExpression(node Node) {
 		valueType = varSignature.ReturnType
 	}
 	this.CurrentScope.AddSignature(variableName, valueType, false, varType)
-	//this.CurrentScope.AddClass(variableName, classScope)
 	return
 }
 
@@ -759,7 +759,7 @@ func (this *SemanticAnalysisV2) visitBlockStatement(node Node) AllType {
 			logError("not support block statement type", item)
 		}
 	}
-	logInfo("visitBlockStatement after current Scope", retValueType)
+	logInfo("visitBlockStatement before current Scope", retValueType)
 	this.CurrentScope.LogNowScope()
 	return retValueType
 }
@@ -994,4 +994,171 @@ func (this *SemanticAnalysisV2) visitMemberExpression(node Node) (AllType, strin
 	//	return UnKnownType{}, ""
 	//}
 	return UnKnownType{}, ""
+}
+
+func (this *SemanticAnalysisV2) visitClassExpression(node Node) AllType {
+	// 1.检查 super 的 class 是否存在
+	if node.Type() != AstTypeClassExpression.Name() {
+		return UnKnownType{}
+	}
+
+	classNameExp := node.(ClassExpression).Name
+	var className string
+	var classType AllType
+	classType, className, _ = this.visitIdentifier(classNameExp)
+
+	// 这里是检测 这个 class 有没有和其他变量重名
+	UnKnownClassType := UnKnownType{}
+	if classType.ValueType() != UnKnownClassType.ValueType() {
+		return UnKnownType{}
+	}
+
+	superClass := node.(ClassExpression).SuperClass
+	superClassName := ""
+	var superClassType AllType
+	// 1.检查 super 的 class 是否存在
+	if superClass != nil {
+		superClassType, superClassName, _ = this.visitIdentifier(superClass)
+
+		// 表示现在找不到这个类
+		if superClassType.ValueType() == UnKnownClassType.ValueType() {
+			logError("super class not found", superClassName)
+			return UnKnownType{}
+		}
+	}
+
+	// 开始新的作用域
+	funcScope := NewScopeV2()
+	funcScope.SetParent(this.CurrentScope)
+	this.CurrentScope = funcScope
+
+	// 现在开始处理这个类
+	classBody := node.(ClassExpression).Body
+	memberSignatures := make([]Signature, 0)
+	logInfo("visitClassExpression classBody", classBody.Type())
+	if classBody.Type() == AstTypeClassBodyStatement.Name() {
+		memberSignatures = this.visitClassBodyStatement(classBody)
+	}
+	thisClassType := ClassType{
+		MemberSignatures: memberSignatures,
+		SuperType:        superClassType,
+	}
+	// 回滚到上级作用域
+	this.CurrentScope = this.CurrentScope.Parent
+
+	// 类不改变, 直接赋值 const
+	// 在父级放 class
+	this.CurrentScope.AddSignature(className, thisClassType, false, "const")
+	return thisClassType
+}
+
+func (this *SemanticAnalysisV2) visitClassBodyStatement(node Node) []Signature {
+	if node.Type() != AstTypeClassBodyStatement.Name() {
+		return nil
+	}
+	signatures := make([]Signature, 0)
+	for _, item := range node.(ClassBodyStatement).Body {
+		logInfo("visitClassBodyStatement visit item", item.Type())
+		switch item.Type() {
+		case AstTypeClassVariableDeclaration.Name():
+			signature := this.visitClassVariableDeclaration(item)
+			signatures = append(signatures, signature)
+		default:
+			logError("unknown class body statement", item.Type())
+		}
+	}
+	ifHasNewFunc := false
+	for _, signature := range signatures {
+		if signature.Name == TokenTypeNew.Name() {
+			ifHasNewFunc = true
+			break
+		}
+	}
+	if !ifHasNewFunc {
+		logError("class init has not new func", node.Type())
+		return nil
+	}
+	return signatures
+}
+
+func (this *SemanticAnalysisV2) visitClassVariableDeclaration(node Node) Signature {
+	//type visitClassVariableDeclaration struct {
+	//	Kind  string // kind属性
+	//	Name  Node   // name属性
+	//	Value Node   // value属性
+	//}
+	left := node.(ClassVariableDeclaration).Name
+	var variableName string
+	switch left.Type() {
+	case AstTypeMemberExpression.Name():
+		// 这里来做 . 语法和 this / cls 的判别
+		if left.(MemberExpression).ElementType == "dot" {
+			if left.(MemberExpression).Object.Type() == AstTypeIdentifier.Name() {
+				var specificTypeName string
+				_, specificTypeName, _ = this.visitIdentifier(left.(MemberExpression).Object)
+				if specificTypeName == TokenTypeCls.Name() || specificTypeName == TokenTypeThis.Name() {
+					// classPropertyName
+					_, variableName, _ = this.visitIdentifier(left.(MemberExpression).Property)
+				} else {
+					logError("invalid member expression", left, variableName)
+					return Signature{}
+				}
+			}
+		} else {
+			logError("invalid member expression", left)
+			return Signature{}
+		}
+	case AstTypeIdentifier.Name():
+		_, variableName, _ = this.visitIdentifier(left)
+	default:
+		logError("invalid class variable declaration", left)
+		return Signature{}
+	}
+
+	var valueType AllType
+	right := node.(ClassVariableDeclaration).Value
+	switch right.Type() {
+	// 访问函数
+	case AstTypeFunctionExpression.Name():
+		valueType = this.visitFunctionExpression(right)
+	case AstTypeBinaryExpression.Name():
+		valueType = this.visitBinaryExpression(right)
+	case AstTypeNumberLiteral.Name():
+		valueType = this.visitNumberLiteral(right)
+	case AstTypeNullLiteral.Name():
+		valueType = this.visitNullLiteral(right)
+	case AstTypeBooleanLiteral.Name():
+		valueType = this.visitBooleanLiteral(right)
+	case AstTypeStringLiteral.Name():
+		valueType, _ = this.visitStringLiteral(right)
+	case AstTypeArrayLiteral.Name():
+		valueType = this.visitArrayLiteral(right)
+	case AstTypeUnaryExpression.Name():
+		valueType = this.visitUnaryExpression(right)
+	case AstTypeDictLiteral.Name():
+		valueType = this.visitDictLiteral(right)
+	case AstTypeIdentifier.Name():
+		var varName string
+		_, varName, _ = this.visitIdentifier(right)
+		symbol, ok := this.CurrentScope.LookupSignature(varName)
+		if ok {
+			valueType = symbol.ReturnType
+		} else {
+			logError("undeclared variable", varName)
+			return Signature{}
+		}
+	default:
+		logError("invalid class variable declaration", right)
+		return Signature{}
+	}
+	// 先这么写 false
+	this.CurrentScope.AddSignature(variableName, valueType, false, "const")
+
+	fmt.Printf("visitClassVariableDeclaration this.CurrentScope: %+v\n", this.CurrentScope)
+	return Signature{
+		Name:       variableName,
+		ReturnType: valueType,
+		IsStatic:   false,
+		VarType:    "const",
+	}
 }

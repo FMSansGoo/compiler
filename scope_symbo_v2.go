@@ -23,6 +23,7 @@ func (s *ScopeV2) AddSignature(name string, ReturnType AllType, isStatic bool, v
 	// func or class 作用域中已经存在该符号
 	if signature, ok := s.Table[name]; ok && signature.Name == name &&
 		(signature.ReturnType.ValueType() == ClassType{}.ValueType() || signature.ReturnType.ValueType() == FunctionType{}.ValueType()) {
+		s.LogNowScope()
 		logError("not allow the same function name or class name", name)
 	}
 	s.Table[name] = Signature{
@@ -57,8 +58,13 @@ func (s *ScopeV2) LogNowScope() {
 	for name, signature := range s.Table {
 		retType := signature.ReturnType.ValueType()
 		funType := FunctionType{}.ValueType()
+		classType := ClassType{}.ValueType()
+		//str += fmt.Sprintf("(name: %s, signature:%+v)", name, signature)
+
 		if retType == funType {
 			str += fmt.Sprintf("(name: %s, func signature RetType: %+v signature:%+v)", name, signature.ReturnType.(FunctionType).ReturnType.ValueType(), signature)
+		} else if retType == classType {
+			str += fmt.Sprintf("(name: %s, class memberType: %+v signature:%+v)", name, signature.ReturnType.(ClassType).MemberSignatures, signature)
 		} else {
 			str += fmt.Sprintf("(name: %s, signature RetType: %+v signature:%+v)", name, signature.ReturnType.ValueType(), signature)
 		}

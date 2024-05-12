@@ -13,7 +13,7 @@ func logInfo(msg string, args ...interface{}) {
 		for _, arg := range args {
 			value := reflect.ValueOf(arg)
 			name := reflect.TypeOf(arg).Name()
-			params = append(params, fmt.Sprintf("%s=%v", name, value))
+			params = append(params, fmt.Sprintf("%s=%+v", name, value))
 		}
 		str = fmt.Sprintf("[INFO] %s: %s", msg, strings.Join(params, ","))
 	}
