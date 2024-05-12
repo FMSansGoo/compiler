@@ -7,7 +7,7 @@ type Node interface {
 
 // Program节点结构
 type Program struct {
-	Body []Node // body属性
+	Body []Node `json:"body"` // body属性
 }
 
 // 实现Node接口的Type方法
@@ -17,7 +17,7 @@ func (p Program) Type() string {
 
 // Identifier节点结构
 type Identifier struct {
-	Value string // value属性
+	Value string `json:"value"` // value属性
 }
 
 // 实现Node接口的Type方法
@@ -27,7 +27,7 @@ func (i Identifier) Type() string {
 
 // BooleanLiteral节点结构
 type BooleanLiteral struct {
-	Value bool // value属性
+	Value bool `json:"value"` // value属性
 }
 
 // 实现Node接口的Type方法
@@ -37,7 +37,7 @@ func (bl BooleanLiteral) Type() string {
 
 // NumberLiteral节点结构
 type NumberLiteral struct {
-	Value float64 // value属性
+	Value float64 `json:"value"` // value属性
 }
 
 // 实现Node接口的Type方法
@@ -47,7 +47,7 @@ func (nl NumberLiteral) Type() string {
 
 // StringLiteral节点结构
 type StringLiteral struct {
-	Value string // value属性
+	Value string `json:"value"` // value属性
 }
 
 // 实现Node接口的Type方法
@@ -66,9 +66,9 @@ func (nl NullLiteral) Type() string {
 
 // VariableDeclaration节点结构
 type VariableDeclaration struct {
-	Kind  string // kind属性
-	Name  Node   // name属性
-	Value Node   // value属性
+	Kind  string `json:"kind"`  // kind属性
+	Name  Node   `json:"name"`  // name属性
+	Value Node   `json:"value"` // value属性
 }
 
 // 实现Node接口的Type方法
@@ -78,9 +78,9 @@ func (vd VariableDeclaration) Type() string {
 
 // ClassDeclaration节点结构
 type ClassVariableDeclaration struct {
-	Kind  string // kind属性
-	Name  Node   // name属性
-	Value Node   // value属性
+	Kind  string `json:"kind"`  // kind属性
+	Name  Node   `json:"name"`  // name属性
+	Value Node   `json:"value"` // value属性
 }
 
 // 实现Node接口的Type方法
@@ -90,9 +90,9 @@ func (vd ClassVariableDeclaration) Type() string {
 
 // AssignmentExpression节点结构
 type AssignmentExpression struct {
-	Operator string // operator属性
-	Left     Node   // left属性
-	Right    Node   // right属性
+	Operator string `json:"operator"` // operator属性
+	Left     Node   `json:"left"`     // left属性
+	Right    Node   `json:"right"`    // right属性
 }
 
 // 实现Node接口的Type方法
@@ -102,9 +102,9 @@ func (ae AssignmentExpression) Type() string {
 
 // BinaryExpression节点结构
 type BinaryExpression struct {
-	Operator string // operator属性
-	Left     Node   // left属性
-	Right    Node   // right属性
+	Operator string `json:"operator"` // operator属性
+	Left     Node   `json:"left"`     // left属性
+	Right    Node   `json:"right"`    // right属性
 }
 
 // 实现Node接口的Type方法
@@ -113,7 +113,7 @@ func (be BinaryExpression) Type() string {
 }
 
 type BlockStatement struct {
-	Body []Node // body属性
+	Body []Node `json:"body"` // body属性
 }
 
 func (bs BlockStatement) Type() string {
@@ -121,8 +121,8 @@ func (bs BlockStatement) Type() string {
 }
 
 type FunctionExpression struct {
-	Params []Node // params 属性
-	Body   Node   // body 属性
+	Params []Node `json:"params"` // params 属性
+	Body   Node   `json:"body"`   // body 属性
 }
 
 func (bs FunctionExpression) Type() string {
@@ -130,7 +130,7 @@ func (bs FunctionExpression) Type() string {
 }
 
 type ReturnStatement struct {
-	Value Node
+	Value Node `json:"value"`
 }
 
 func (bs ReturnStatement) Type() string {
@@ -152,8 +152,8 @@ func (bs BreakStatement) Type() string {
 }
 
 type UnaryExpression struct {
-	Operator string // operator属性
-	Value    Node   // value 属性
+	Operator string `json:"operator"` // operator属性
+	Value    Node   `json:"value"`    // value 属性
 }
 
 func (ue UnaryExpression) Type() string {
@@ -162,8 +162,8 @@ func (ue UnaryExpression) Type() string {
 
 // 调用的结点
 type CallExpression struct {
-	Object Node   // object 属性
-	Args   []Node // Args 属性
+	Object Node   `json:"object"` // object 属性
+	Args   []Node `json:"args"`   // Args 属性
 }
 
 func (ce CallExpression) Type() string {
@@ -172,7 +172,7 @@ func (ce CallExpression) Type() string {
 
 // 数组的节点
 type ArrayLiteral struct {
-	Values []Node // values 属性
+	Values []Node `json:"values"` // values 属性
 }
 
 func (al ArrayLiteral) Type() string {
@@ -180,8 +180,8 @@ func (al ArrayLiteral) Type() string {
 }
 
 type PropertyAssignment struct {
-	Key   Node // key
-	Value Node // value
+	Key   Node `json:"key"`   // key
+	Value Node `json:"value"` // value
 }
 
 func (pa PropertyAssignment) Type() string {
@@ -189,7 +189,7 @@ func (pa PropertyAssignment) Type() string {
 }
 
 type DictLiteral struct {
-	Values []Node // key
+	Values []Node `json:"values"` // key
 }
 
 func (dl DictLiteral) Type() string {
@@ -197,9 +197,9 @@ func (dl DictLiteral) Type() string {
 }
 
 type IfStatement struct {
-	Condition  Node
-	Consequent Node
-	Alternate  Node
+	Condition  Node `json:"condition"`  // condition属性
+	Consequent Node `json:"consequent"` // consequent属性
+	Alternate  Node `json:"alternate"`  // alternate属性
 }
 
 func (is IfStatement) Type() string {
@@ -207,10 +207,10 @@ func (is IfStatement) Type() string {
 }
 
 type ForStatement struct {
-	Init   Node
-	Test   Node
-	Update Node
-	Body   Node
+	Init   Node `json:"init"`   // init属性
+	Test   Node `json:"test"`   // test属性
+	Update Node `json:"update"` // update属性
+	Body   Node `json:"body"`   // body属性
 }
 
 func (fs ForStatement) Type() string {
@@ -218,8 +218,8 @@ func (fs ForStatement) Type() string {
 }
 
 type WhileStatement struct {
-	Condition Node
-	Body      Node
+	Condition Node `json:"condition"` // condition属性
+	Body      Node `json:"body"`      // body属性
 }
 
 func (w WhileStatement) Type() string {
@@ -227,7 +227,7 @@ func (w WhileStatement) Type() string {
 }
 
 type ClassBodyStatement struct {
-	Body []Node
+	Body []Node `json:"body"` // body属性
 }
 
 func (cb ClassBodyStatement) Type() string {
@@ -235,9 +235,9 @@ func (cb ClassBodyStatement) Type() string {
 }
 
 type ClassExpression struct {
-	Name       Node
-	SuperClass Node
-	Body       Node
+	Name       Node `json:"name"`       // name属性
+	SuperClass Node `json:"superClass"` // superClass属性
+	Body       Node `json:"body"`       // body属性
 }
 
 func (cb ClassExpression) Type() string {
@@ -252,10 +252,9 @@ func (cb ClassLiteral) Type() string {
 }
 
 type MemberExpression struct {
-	Object   Node
-	Property Node
-	// 这里拿来区分 点语法 和 数组语法
-	ElementType string
+	Object      Node   `json:"object"`      // object属性
+	Property    Node   `json:"property"`    // property属性
+	ElementType string `json:"elementType"` // elementType属性，用于区分点语法和数组语法
 }
 
 func (cb MemberExpression) Type() string {
