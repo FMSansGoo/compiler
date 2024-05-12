@@ -58,6 +58,8 @@ func (this *SemanticAnalysis) visitProgram(body []Node) {
 		// 访问 class
 		case AstTypeClassExpression.Name():
 			this.visitClassExpression(item)
+		default:
+			logError("visitProgram visit item default", item.Type())
 		}
 		logInfo("visitProgram visit item after currentScope", this.CurrentScope)
 	}
