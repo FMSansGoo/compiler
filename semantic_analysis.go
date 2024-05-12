@@ -58,6 +58,8 @@ func (this *SemanticAnalysis) visitProgram(body []Node) {
 		// 访问 class
 		case AstTypeClassExpression.Name():
 			this.visitClassExpression(item)
+		case AstTypeCallExpression.Name():
+			this.visitCallExpression(item)
 		default:
 			logError("visitProgram visit item default", item.Type())
 		}
@@ -1058,6 +1060,11 @@ func (this *SemanticAnalysis) visitCallExpression(node Node) (ValueType, string)
 	if node.Type() == AstTypeCallExpression.Name() {
 		if node.(CallExpression).Object.Type() == AstTypeMemberExpression.Name() {
 			return this.visitMemberExpression(node.(CallExpression).Object)
+		} else {
+			// 函数调用暂时先不返回值
+			if node.(CallExpression).Object.Type() == AstTypeIdentifier.Name() {
+				return ValueTypeNull, ""
+			}
 		}
 		return ValueTypeError, ""
 	}
