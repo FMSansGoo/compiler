@@ -6,20 +6,22 @@ import (
 	"testing"
 )
 
-func TestSemanticAnalysis(t *testing.T) {
+func TestSemanticAnalysisV2(t *testing.T) {
 	//基本类型
-	//testSemanticAnalysis1()
+	//testSemanticAnalysis1_1()
 	////多重运算
-	//testSemanticAnalysis2()
+	//testSemanticAnalysis2_1()
 	////for 循环 while 循环 if else continue return
-	//testSemanticAnalysis3()
+	//testSemanticAnalysis3_1()
+	//testSemanticAnalysis3_2()
+	//testSemanticAnalysis3_3()
 	////函数
-	testSemanticAnalysis4()
+	testSemanticAnalysis4_1()
 	//类
-	//testSemanticAnalysis5()
+	//testSemanticAnalysis5_1()
 }
 
-func testSemanticAnalysis1() {
+func testSemanticAnalysis1_1() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
 		var a = 1
@@ -52,12 +54,12 @@ func testSemanticAnalysis1() {
 	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
-	semanticAnalysis := NewSemanticAnalysis(ast)
+	semanticAnalysis := NewSemanticAnalysisV2(ast)
 	semanticAnalysis.visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
-func testSemanticAnalysis2() {
+func testSemanticAnalysis2_1() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
 		var a = 1 + 1 * 1 / 3 - 1
@@ -92,23 +94,14 @@ func testSemanticAnalysis2() {
 	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
-	semanticAnalysis := NewSemanticAnalysis(ast)
+	semanticAnalysis := NewSemanticAnalysisV2(ast)
 	semanticAnalysis.visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
-func testSemanticAnalysis3() {
+func testSemanticAnalysis3_1() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
-		for(var a = 1; a <= 10; a += 1) {
-			if(a == 1){
-				continue
-			} else if (a == 2) {
-				continue	
-			} else {
-				break
-			}
-		}
 		while(true){
 			break
 		}
@@ -136,12 +129,87 @@ func testSemanticAnalysis3() {
 	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
-	semanticAnalysis := NewSemanticAnalysis(ast)
+	semanticAnalysis := NewSemanticAnalysisV2(ast)
 	semanticAnalysis.visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
-func testSemanticAnalysis4() {
+func testSemanticAnalysis3_2() {
+	lexer := SansLangLexer{}
+	lexer.Code = `
+		for(var a = 1; a <= 10; a += 1) {
+
+		}
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := TokenList{
+		Tokens: tokenList,
+	}
+	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	// 将节点转换为JSON字符串
+	jsonData, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Println("转换为JSON时出错:", err)
+		return
+	}
+
+	// 打印JSON字符串
+	fmt.Println(string(jsonData))
+	fmt.Println("====================== parser end =======================")
+	fmt.Println("====================== NewSemanticAnalysis init =======================")
+	semanticAnalysis := NewSemanticAnalysisV2(ast)
+	semanticAnalysis.visit()
+	fmt.Println("====================== NewSemanticAnalysis end =======================")
+}
+
+func testSemanticAnalysis3_3() {
+	lexer := SansLangLexer{}
+	lexer.Code = `
+		var a = 1
+		if(a == 1){
+			continue
+		} else if (a == 2) {
+			return a	
+		} else {
+			break
+		}
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := TokenList{
+		Tokens: tokenList,
+	}
+	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	// 将节点转换为JSON字符串
+	jsonData, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Println("转换为JSON时出错:", err)
+		return
+	}
+
+	// 打印JSON字符串
+	fmt.Println(string(jsonData))
+	fmt.Println("====================== parser end =======================")
+	fmt.Println("====================== NewSemanticAnalysis init =======================")
+	semanticAnalysis := NewSemanticAnalysisV2(ast)
+	semanticAnalysis.visit()
+	fmt.Println("====================== NewSemanticAnalysis end =======================")
+}
+
+func testSemanticAnalysis4_1() {
 	lexer := SansLangLexer{}
 	// todo 还需要做一下传参的检测
 	lexer.Code = `
@@ -178,12 +246,12 @@ func testSemanticAnalysis4() {
 	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
-	semanticAnalysis := NewSemanticAnalysis(ast)
+	semanticAnalysis := NewSemanticAnalysisV2(ast)
 	semanticAnalysis.visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
-func testSemanticAnalysis5() {
+func testSemanticAnalysis5_1() {
 	// todo 这的 class 可能有点问题，先这样吧，
 	// 类函数
 	lexer := SansLangLexer{}
