@@ -143,6 +143,7 @@ func testSemanticAnalysis3() {
 
 func testSemanticAnalysis4() {
 	lexer := SansLangLexer{}
+	// todo 还需要做一下传参的检测
 	lexer.Code = `
 		const log = function(a) {
 			return a
@@ -184,24 +185,20 @@ func testSemanticAnalysis4() {
 
 func testSemanticAnalysis5() {
 	// todo 这的 class 可能有点问题，先这样吧，
+	// 类函数
 	lexer := SansLangLexer{}
 	lexer.Code = `
-		class B {
-
-		}
-		class A super B {
+		class A {
 			const cls.age = 1
-			
 			const new = function() {
-				this.gender = "boy"
 			}
 			const cls.fuck = function() {
-			
+				var a = 1
+				return a
 			}
 		}
-		var a = A()
-		a.new()
-		a.fuck()
+		var c = A.new() // 类 的类型 ， 可以直接类似 global['A'].fuck.returnType 这样
+		var d = c.fuck() // d 应该是 number类型
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

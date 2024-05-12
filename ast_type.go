@@ -52,6 +52,8 @@ var (
 	AstTypeReturnStatement = newAstType("ReturnStatement", 23)
 	// break
 	AstTypeBreakStatement = newAstType("BreakStatement", 24)
+	// CallExpression
+	AstTypeCallExpression = newAstType("CallExpression", 25)
 )
 
 func newAstType(name string, value int64) AstType {

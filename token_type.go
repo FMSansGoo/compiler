@@ -83,6 +83,8 @@ var (
 	TokenTypeCls = newTokenType("cls", 56)
 	// this
 	TokenTypeThis = newTokenType("this", 56)
+	// new
+	TokenTypeNew = newTokenType("new", 56)
 )
 
 func newTokenType(name string, value int64) TokenType {

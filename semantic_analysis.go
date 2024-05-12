@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 /*
 	todo 还没做
@@ -126,7 +128,7 @@ func (this *SemanticAnalysis) visitClassBodyStatement(node Node) {
 	}
 
 	// class 来查找一下有没有 new 函数，没有就报错
-	symbol, isInit := this.CurrentScope.LookupSymbol("new")
+	symbol, isInit := this.CurrentScope.LookupSymbol(TokenTypeNew.Name())
 	if !isInit || symbol.Value != ValueTypeFunctionExpression {
 		logError("new class error, can not find new function")
 	}
@@ -167,6 +169,9 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 		}
 	case AstTypeIdentifier.Name():
 		_, variableName, _ = this.visitIdentifier(left)
+	default:
+		logError("invalid class variable declaration", left)
+		return
 	}
 
 	valueType := ValueTypeError
@@ -201,6 +206,9 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 			logError("undeclared variable", varName)
 			return
 		}
+	default:
+		logError("invalid class variable declaration", right)
+		return
 	}
 	this.CurrentScope.AddSymbol(varType, variableName, valueType, extraVariableType)
 
@@ -210,11 +218,18 @@ func (this *SemanticAnalysis) visitClassVariableDeclaration(node Node) {
 
 func (this *SemanticAnalysis) visitAssignmentExpression(node Node) {
 	left := node.(AssignmentExpression).Left
+	logInfo("visitClassVariableDeclaration visitAssignmentExpression", node.(AssignmentExpression))
 	var variableName string
 	switch left.Type() {
 	case AstTypeIdentifier.Name():
 		_, variableName, _ = this.visitIdentifier(left)
+	case AstTypeMemberExpression.Name():
+		_, variableName = this.visitMemberExpression(left)
+	default:
+		logError("invalid assignment expression", left)
+		return
 	}
+	fmt.Printf("visitAssignmentExpression variableName %v left:%v\n", variableName, left)
 	symbol, ok := this.CurrentScope.LookupSymbol(variableName)
 	// const 检查
 	if ok && symbol.VarType == TokenTypeConst.Name() {
@@ -223,7 +238,7 @@ func (this *SemanticAnalysis) visitAssignmentExpression(node Node) {
 	}
 
 	varType := TokenTypeVar.Name()
-	valueType := ValueTypeError
+	valueType := ValueTypeIdentifier
 	right := node.(AssignmentExpression).Right
 	switch right.Type() {
 	case AstTypeBinaryExpression.Name():
@@ -247,10 +262,11 @@ func (this *SemanticAnalysis) visitAssignmentExpression(node Node) {
 	}
 	// 强类型检查，如果右边的值不是同一个类型就报错
 	if ok && symbol.Value != valueType {
-		logError("variable cannot be reassigned to another type", variableName)
+		logError("variable cannot be reassigned to another type", variableName, symbol, valueType)
 		return
 	}
 	this.CurrentScope.AddSymbol(varType, variableName, valueType, ValueTypeError)
+	//this.CurrentScope.AddClass(variableName, classScope)
 	return
 }
 
@@ -266,6 +282,9 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 	switch left.Type() {
 	case AstTypeIdentifier.Name():
 		_, variableName, _ = this.visitIdentifier(left)
+	default:
+		logError("visitVariableDeclaration invalid variable declaration", left)
+		return
 	}
 
 	valueType := ValueTypeError
@@ -302,6 +321,11 @@ func (this *SemanticAnalysis) visitVariableDeclaration(node Node) {
 			logError("undeclared variable", varName)
 			return
 		}
+	case AstTypeCallExpression.Name():
+		valueType, _ = this.visitCallExpression(right)
+	default:
+		logError("visitVariableDeclaration invalid variable declaration", right)
+		return
 	}
 	this.CurrentScope.AddSymbol(varType, variableName, valueType, extraInfoValueType)
 
@@ -364,6 +388,7 @@ func (this *SemanticAnalysis) visitBlockStatement(node Node) (returnValueType Va
 		// 赋值
 		case AstTypeAssignmentExpression.Name():
 			this.visitAssignmentExpression(item)
+		// for 循环 break
 		case AstTypeBreakStatement.Name():
 			this.visitBreakStatement(item)
 		//return
@@ -980,16 +1005,59 @@ func (this *SemanticAnalysis) visitForStatement(node Node) ValueType {
 }
 
 // Todo array dot 语法 [] .
-func (this *SemanticAnalysis) visitMemberExpression(node Node) ValueType {
+func (this *SemanticAnalysis) visitMemberExpression(node Node) (ValueType, string) {
+	var variableName string
 	if node.Type() == AstTypeMemberExpression.Name() {
 		et := node.(MemberExpression).ElementType
 		switch et {
 		case "dot":
+			logInfo("visitMemberExpression node.(before)", node.(MemberExpression))
+			if node.(MemberExpression).Object.Type() == AstTypeIdentifier.Name() {
+				var specificTypeName string
+				_, specificTypeName, _ = this.visitIdentifier(node.(MemberExpression).Object)
+				logInfo("visitMemberExpression node.(MemberExpression)", node.(MemberExpression))
+				if specificTypeName == TokenTypeCls.Name() || specificTypeName == TokenTypeThis.Name() {
+					logInfo("visitMemberExpression node.(MemberExpression).Property", node.(MemberExpression).Property)
+					// classPropertyName
+					var variableValueType = ValueTypeIdentifier
+					variableValueType, variableName, _ = this.visitIdentifier(node.(MemberExpression).Property)
+					return variableValueType, variableName
+				} else {
+					// 1.处理.new()
+					var variableValueType = ValueTypeIdentifier
+					variableValueType, variableName, _ = this.visitIdentifier(node.(MemberExpression).Property)
+					logInfo("visitMemberExpression variableName", variableValueType, variableName)
+					if variableName == TokenTypeNew.Name() {
+						variableValueType, _, _ = this.visitIdentifier(node.(MemberExpression).Object)
+						return variableValueType, ""
+					}
+					// 2.处理类方法
+					if classScope, ok := this.CurrentScope.LookupScope(specificTypeName); ok {
+						for _, subScope := range classScope.SubScopes {
+							if symbol, ok1 := subScope.LookupSymbol(variableName); ok1 {
+								logInfo("visitMemberExpression subScope symbol", symbol)
+								return symbol.ExtraInfo, variableName
+							}
+						}
+					}
+					return variableValueType, variableName
+				}
+			}
 
 		case "array":
 		}
 
-		return ValueTypeError
+		return ValueTypeError, ""
 	}
-	return ValueTypeError
+	return ValueTypeError, ""
+}
+
+func (this *SemanticAnalysis) visitCallExpression(node Node) (ValueType, string) {
+	if node.Type() == AstTypeCallExpression.Name() {
+		if node.(CallExpression).Object.Type() == AstTypeMemberExpression.Name() {
+			return this.visitMemberExpression(node.(CallExpression).Object)
+		}
+		return ValueTypeError, ""
+	}
+	return ValueTypeError, ""
 }

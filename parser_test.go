@@ -175,18 +175,24 @@ func testParser4() {
 func testParser5() {
 	lexer := SansLangLexer{}
 	lexer.Code = `
+		class B {
+			const new = function() {
+			}
+		}
 		class A super B {
 			const cls.age = 1
 			
-			const new = function() {
+			const new = function(name) {
 				this.gender = "boy"
+				this.name = name
 			}
 			const cls.fuck = function() {
-			
+				var a = 1
+				return a
 			}
 		}
-		var a = A()
-		a.new()
+		var a = A.new()
+		var b = a.fuck()
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
