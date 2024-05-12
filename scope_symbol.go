@@ -69,8 +69,3 @@ func (s *Scope) LookupScope(name string) (*Scope, bool) {
 
 	return nil, false
 }
-
-type ScopeV2 struct {
-	Table  map[string]Signature
-	Parent *ScopeV2
-}
