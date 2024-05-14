@@ -1,32 +1,33 @@
-package main
+package parser
 
 import (
 	"fmt"
+	sansLexer "go-compiler/lexer"
 	"strconv"
 )
 
 type BaseParser struct {
-	lexer    *TokenList
+	lexer    *sansLexer.TokenList
 	Position int
-	Cache    []Token
+	Cache    []sansLexer.Token
 }
 
-func NewBaseParser(lexer *TokenList) *BaseParser {
+func NewBaseParser(lexer *sansLexer.TokenList) *BaseParser {
 	return &BaseParser{
 		lexer:    lexer,
 		Position: 0,
-		Cache:    []Token{},
+		Cache:    []sansLexer.Token{},
 	}
 }
 
-func (this *BaseParser) Current() Token {
+func (this *BaseParser) Current() sansLexer.Token {
 	if len(this.Cache) == this.Position {
-		this.Cache = append(this.Cache, this.lexer.nextToken())
+		this.Cache = append(this.Cache, this.lexer.NextToken())
 	}
 	return this.Cache[this.Position]
 }
 
-func (this *BaseParser) Next() Token {
+func (this *BaseParser) Next() sansLexer.Token {
 	c := this.Current()
 	this.Position += 1
 	return c
@@ -40,17 +41,17 @@ func (this *BaseParser) Reset(pos int) {
 	this.Position = pos
 }
 
-func (this *BaseParser) Expect(TokenType TokenType) bool {
+func (this *BaseParser) Expect(TokenType sansLexer.TokenType) bool {
 	c := this.Current()
 	return c.Type == TokenType
 }
 
-func (this *BaseParser) Match(TokenType TokenType) Token {
+func (this *BaseParser) Match(TokenType sansLexer.TokenType) sansLexer.Token {
 	if this.Expect(TokenType) {
 		return this.Next()
 	}
-	return Token{
-		Type: TokenTypeError,
+	return sansLexer.Token{
+		Type: sansLexer.TokenTypeError,
 	}
 }
 
@@ -58,14 +59,14 @@ type SansLangParser struct {
 	BaseParser
 }
 
-func NewSansLangParser(lexer *TokenList) *SansLangParser {
+func NewSansLangParser(lexer *sansLexer.TokenList) *SansLangParser {
 	return &SansLangParser{BaseParser: *NewBaseParser(lexer)}
 }
 
 func (this *SansLangParser) Parse() Program {
 	programAst := this.astParseProgram()
 	fmt.Printf("programAst %+v\n", programAst)
-	eofToken := this.Match(TokenTypeEof)
+	eofToken := this.Match(sansLexer.TokenTypeEof)
 	if !eofToken.Nil() {
 		fmt.Errorf("Parse error current:%v pos:%v", this.Current(), this.Position)
 	}
@@ -84,7 +85,7 @@ func (this *SansLangParser) astParseProgram() Program {
 func (this *SansLangParser) astParseStatements() []Node {
 	body := []Node{}
 	fmt.Printf("astParseStatements %v\n", this.Current())
-	for this.Current().Type != TokenTypeEof {
+	for this.Current().Type != sansLexer.TokenTypeEof {
 		subAst := this.astParseStatement()
 		fmt.Printf("astParseStatements subAst %+v this.Current():%v\n", subAst, this.Current())
 		if subAst != nil {
@@ -98,11 +99,11 @@ func (this *SansLangParser) astParseStatements() []Node {
 
 func (this *SansLangParser) astParseVariableDeclaration() Node {
 	fmt.Printf("astParseVariableDeclaration %v \n", this.Current())
-	if this.Expect(TokenTypeVar) || this.Expect(TokenTypeConst) {
+	if this.Expect(sansLexer.TokenTypeVar) || this.Expect(sansLexer.TokenTypeConst) {
 		op := this.Next()
 		id := this.astParseCallMemberExpression()
 		if id != nil {
-			assign := this.Match(TokenTypeAssign)
+			assign := this.Match(sansLexer.TokenTypeAssign)
 			if !assign.Error() {
 				exp := this.astParseExpression()
 				if exp != nil {
@@ -178,8 +179,8 @@ func (this *SansLangParser) astParseStatement() Node {
 
 func (this *SansLangParser) astParseAssignment() Node {
 	key := this.astParseString()
-	if key != nil && this.Expect(TokenTypeColon) {
-		value := this.Match(TokenTypeColon)
+	if key != nil && this.Expect(sansLexer.TokenTypeColon) {
+		value := this.Match(sansLexer.TokenTypeColon)
 		if !value.Error() {
 			exp := this.astParseExpression()
 			if exp != nil {
@@ -193,17 +194,17 @@ func (this *SansLangParser) astParseAssignment() Node {
 func (this *SansLangParser) astParseClassExpression() Node {
 	// classExpression: 'class' identifier super ('(' identifier? ')') classBodyStatement
 	mark := this.Mark()
-	classToken := this.Match(TokenTypeClass)
+	classToken := this.Match(sansLexer.TokenTypeClass)
 	if !classToken.Error() {
 		id := this.astParseIdentifier()
 		if id != nil {
 			var superClass Node
-			if this.Expect(TokenTypeSuper) {
-				superToken := this.Match(TokenTypeSuper)
+			if this.Expect(sansLexer.TokenTypeSuper) {
+				superToken := this.Match(sansLexer.TokenTypeSuper)
 				if !superToken.Error() {
-					this.Match(TokenTypeLParen)
+					this.Match(sansLexer.TokenTypeLParen)
 					superClass = this.astParseIdentifier()
-					this.Match(TokenTypeRParen)
+					this.Match(sansLexer.TokenTypeRParen)
 				}
 			}
 			body := this.astParseClassBody()
@@ -220,10 +221,10 @@ func (this *SansLangParser) astParseClassExpression() Node {
 
 func (this *SansLangParser) astParseClassBody() Node {
 	// classBodyStatement: '{' classBodyStatements '}'
-	lb := this.Match(TokenTypeLBrace)
+	lb := this.Match(sansLexer.TokenTypeLBrace)
 	if !lb.Error() {
 		body := this.astParseClassBodyStatements()
-		this.Match(TokenTypeRBrace)
+		this.Match(sansLexer.TokenTypeRBrace)
 		return ClassBodyStatement{Body: body}
 	}
 	return nil
@@ -233,7 +234,7 @@ func (this *SansLangParser) astParseClassBodyStatements() []Node {
 	// 处理不同的函数定义
 	body := []Node{}
 	fmt.Printf("astParseClassBodyStatements %v\n", this.Current())
-	for this.Current().Type != TokenTypeRBrace {
+	for this.Current().Type != sansLexer.TokenTypeRBrace {
 		subAst := this.astParseClassBodyStatement()
 		fmt.Printf("astParseClassBodyStatements subAst %+v this.Current():%v\n", subAst, this.Current())
 		if subAst != nil {
@@ -270,11 +271,11 @@ func (this *SansLangParser) astParseClassVariableDeclaration() Node {
 	// const cls.age = 1
 	// const cls.new = function(){}
 	// const new = function() {}
-	if this.Expect(TokenTypeConst) || this.Expect(TokenTypeVar) {
+	if this.Expect(sansLexer.TokenTypeConst) || this.Expect(sansLexer.TokenTypeVar) {
 		op := this.Next()
 		id := this.astParseCallClassMemberExpression()
 		if id != nil {
-			assign := this.Match(TokenTypeAssign)
+			assign := this.Match(sansLexer.TokenTypeAssign)
 			if !assign.Error() {
 				exp := this.astParseExpression()
 				if exp != nil {
@@ -297,10 +298,10 @@ func (this *SansLangParser) astParseClassExpressionStatement() Node {
 }
 
 func (this *SansLangParser) astParseForBlockStatement() Node {
-	lbraceToken := this.Match(TokenTypeLBrace)
+	lbraceToken := this.Match(sansLexer.TokenTypeLBrace)
 	if !lbraceToken.Error() {
 		body := []Node{}
-		for this.Current().Type != TokenTypeRBrace {
+		for this.Current().Type != sansLexer.TokenTypeRBrace {
 			subAst := this.astParseStatement()
 			fmt.Printf("astParseBlockStatement subAst %+v this.Current:%v\n", subAst, this.Current())
 			if subAst != nil {
@@ -309,17 +310,17 @@ func (this *SansLangParser) astParseForBlockStatement() Node {
 				break
 			}
 		}
-		this.Match(TokenTypeRBrace)
+		this.Match(sansLexer.TokenTypeRBrace)
 		return BlockStatement{Body: body}
 	}
 	return nil
 }
 
 func (this *SansLangParser) astParseBlockStatement() Node {
-	lbraceToken := this.Match(TokenTypeLBrace)
+	lbraceToken := this.Match(sansLexer.TokenTypeLBrace)
 	if !lbraceToken.Error() {
 		body := []Node{}
-		for this.Current().Type != TokenTypeRBrace {
+		for this.Current().Type != sansLexer.TokenTypeRBrace {
 			subAst := this.astParseStatement()
 			fmt.Printf("astParseBlockStatement subAst %+v this.Current:%v\n", subAst, this.Current())
 			if subAst != nil {
@@ -328,14 +329,14 @@ func (this *SansLangParser) astParseBlockStatement() Node {
 				break
 			}
 		}
-		this.Match(TokenTypeRBrace)
+		this.Match(sansLexer.TokenTypeRBrace)
 		return BlockStatement{Body: body}
 	}
 	return nil
 }
 
 func (this *SansLangParser) astParseContinueStatement() Node {
-	continueToken := this.Match(TokenTypeContinue)
+	continueToken := this.Match(sansLexer.TokenTypeContinue)
 	if !continueToken.Error() {
 		return ContinueStatement{}
 	}
@@ -344,7 +345,7 @@ func (this *SansLangParser) astParseContinueStatement() Node {
 
 func (this *SansLangParser) astParseBreakStatement() Node {
 	fmt.Printf("astParseBreakStatement %v\n", this.Current())
-	breakToken := this.Match(TokenTypeBreak)
+	breakToken := this.Match(sansLexer.TokenTypeBreak)
 	if !breakToken.Error() {
 		return BreakStatement{}
 	}
@@ -353,9 +354,9 @@ func (this *SansLangParser) astParseBreakStatement() Node {
 
 func (this *SansLangParser) astParseReturnStatement() Node {
 	fmt.Printf("astParseReturnStatement %v\n", this.Current())
-	returnToken := this.Match(TokenTypeReturn)
+	returnToken := this.Match(sansLexer.TokenTypeReturn)
 	if !returnToken.Error() {
-		if this.Expect(TokenTypeRBrace) {
+		if this.Expect(sansLexer.TokenTypeRBrace) {
 			return ReturnStatement{Value: nil}
 		} else {
 			exp := this.astParseExpression()
@@ -369,19 +370,19 @@ func (this *SansLangParser) astParseReturnStatement() Node {
 
 func (this *SansLangParser) astParseIfStatement() Node {
 	// ifStatement -> 'if' '(' expression ')' blockStatement ('else' (blockStatement | ifStatement) )?
-	if this.Expect(TokenTypeIf) {
-		this.Match(TokenTypeIf)
-		this.Match(TokenTypeLParen)
+	if this.Expect(sansLexer.TokenTypeIf) {
+		this.Match(sansLexer.TokenTypeIf)
+		this.Match(sansLexer.TokenTypeLParen)
 		condition := this.astParseExpression()
 		if condition != nil {
-			rp := this.Match(TokenTypeRParen)
+			rp := this.Match(sansLexer.TokenTypeRParen)
 			if !rp.Error() {
 				consequent := this.astParseBlockStatement()
 				if consequent != nil {
 					var alternate Node
-					if this.Expect(TokenTypeElse) {
-						this.Match(TokenTypeElse)
-						if this.Expect(TokenTypeIf) {
+					if this.Expect(sansLexer.TokenTypeElse) {
+						this.Match(sansLexer.TokenTypeElse)
+						if this.Expect(sansLexer.TokenTypeIf) {
 							alternate = this.astParseIfStatement()
 						} else {
 							alternate = this.astParseBlockStatement()
@@ -397,12 +398,12 @@ func (this *SansLangParser) astParseIfStatement() Node {
 
 func (this *SansLangParser) astParseWhileStatement() Node {
 	// ifStatement -> 'if' '(' expression ')' blockStatement ('else' (blockStatement | ifStatement) )?
-	if this.Expect(TokenTypeWhile) {
-		this.Match(TokenTypeWhile)
-		this.Match(TokenTypeLParen)
+	if this.Expect(sansLexer.TokenTypeWhile) {
+		this.Match(sansLexer.TokenTypeWhile)
+		this.Match(sansLexer.TokenTypeLParen)
 		condition := this.astParseExpression()
 		if condition != nil {
-			rp := this.Match(TokenTypeRParen)
+			rp := this.Match(sansLexer.TokenTypeRParen)
 			if !rp.Error() {
 				body := this.astParseBlockStatement()
 				if body != nil {
@@ -416,22 +417,22 @@ func (this *SansLangParser) astParseWhileStatement() Node {
 
 func (this *SansLangParser) astParseForStatement() Node {
 	// forStatement: 'for' '(' (expressionStatement | variableDeclaration)? ';' expression? ';' expression? ')' blockStatement
-	if this.Expect(TokenTypeFor) {
-		this.Match(TokenTypeFor)
-		this.Match(TokenTypeLParen)
+	if this.Expect(sansLexer.TokenTypeFor) {
+		this.Match(sansLexer.TokenTypeFor)
+		this.Match(sansLexer.TokenTypeLParen)
 		init := this.astParseExpressionStatement()
 		if init == nil {
 			init = this.astParseVariableDeclaration()
 		}
-		semi := this.Match(TokenTypeSemi)
+		semi := this.Match(sansLexer.TokenTypeSemi)
 		if !semi.Error() {
 			test := this.astParseExpression()
 			if test != nil {
-				semi = this.Match(TokenTypeSemi)
+				semi = this.Match(sansLexer.TokenTypeSemi)
 				if !semi.Error() {
 					update := this.astParseExpression()
 					if update != nil {
-						this.Match(TokenTypeRParen)
+						this.Match(sansLexer.TokenTypeRParen)
 						body := this.astParseBlockStatement()
 						return ForStatement{Init: init, Test: test, Update: update, Body: body}
 					}
@@ -447,12 +448,12 @@ func (this *SansLangParser) astParseFunctionExpression() Node {
 	// functionExpression -> 'function' '(' formalParameterList ')' blockStatement
 	params := []Node{}
 	//Cannot call a pointer method on 'this.Match(TokenTypeFunction)'
-	funcToken := this.Match(TokenTypeFunction)
+	funcToken := this.Match(sansLexer.TokenTypeFunction)
 	if !funcToken.Error() {
-		lparenToken := this.Match(TokenTypeLParen)
+		lparenToken := this.Match(sansLexer.TokenTypeLParen)
 		if !lparenToken.Error() {
 			params = this.astParseFormalParameterList()
-			rparenToken := this.Match(TokenTypeRParen)
+			rparenToken := this.Match(sansLexer.TokenTypeRParen)
 			if !rparenToken.Error() {
 				body := this.astParseBlockStatement()
 				if body != nil {
@@ -468,11 +469,11 @@ func (this *SansLangParser) astParseFormalParameterList() []Node {
 	// formalParameterList -> (id ',')*
 	// TODO: 默认参数
 	params := []Node{}
-	for this.Expect(TokenTypeId) {
+	for this.Expect(sansLexer.TokenTypeId) {
 		id := this.astParseIdentifier()
 		params = append(params, id)
-		if this.Expect(TokenTypeComma) {
-			this.Match(TokenTypeComma)
+		if this.Expect(sansLexer.TokenTypeComma) {
+			this.Match(sansLexer.TokenTypeComma)
 		} else {
 			break
 		}
@@ -484,21 +485,21 @@ func (this *SansLangParser) astParseArgsWithParen() []Node {
 	// todo 支持默认参数
 	// ()
 	args := []Node{}
-	if this.Expect(TokenTypeLParen) {
-		this.Match(TokenTypeLParen)
-		for this.Expect(TokenTypeNumeric) || this.Expect(TokenTypeId) || this.Expect(TokenTypeString) {
+	if this.Expect(sansLexer.TokenTypeLParen) {
+		this.Match(sansLexer.TokenTypeLParen)
+		for this.Expect(sansLexer.TokenTypeNumeric) || this.Expect(sansLexer.TokenTypeId) || this.Expect(sansLexer.TokenTypeString) {
 			// 字面量
 			arg := this.astParseLiteral()
 			if arg != nil {
 				args = append(args, arg)
 			}
 			// ,
-			t := this.Match(TokenTypeComma)
+			t := this.Match(sansLexer.TokenTypeComma)
 			if t.Error() {
 				break
 			}
 		}
-		t := this.Match(TokenTypeRParen)
+		t := this.Match(sansLexer.TokenTypeRParen)
 		if !t.Error() {
 			return args
 		}
@@ -520,8 +521,8 @@ func (this *SansLangParser) astParseCallMemberExpression() Node {
 			return node
 		}
 		// 点语法
-		if this.Expect(TokenTypeDot) {
-			this.Match(TokenTypeDot)
+		if this.Expect(sansLexer.TokenTypeDot) {
+			this.Match(sansLexer.TokenTypeDot)
 			prop := this.astParseIdentifier()
 			if prop != nil {
 				node := MemberExpression{
@@ -534,11 +535,11 @@ func (this *SansLangParser) astParseCallMemberExpression() Node {
 		}
 		this.Reset(mark)
 		// 数组
-		if this.Expect(TokenTypeLBracket) {
-			this.Match(TokenTypeLBracket)
+		if this.Expect(sansLexer.TokenTypeLBracket) {
+			this.Match(sansLexer.TokenTypeLBracket)
 			prop := this.astParseExpression()
 			if prop != nil {
-				this.Match(TokenTypeRBracket)
+				this.Match(sansLexer.TokenTypeRBracket)
 				node := MemberExpression{
 					Object:      subAst,
 					Property:    prop,
@@ -566,8 +567,8 @@ func (this *SansLangParser) astParseCallClassMemberExpression() Node {
 			return node
 		}
 		// 点语法
-		if this.Expect(TokenTypeDot) {
-			this.Match(TokenTypeDot)
+		if this.Expect(sansLexer.TokenTypeDot) {
+			this.Match(sansLexer.TokenTypeDot)
 			prop := this.astParseIdentifier()
 			if prop != nil {
 				node := MemberExpression{
@@ -580,11 +581,11 @@ func (this *SansLangParser) astParseCallClassMemberExpression() Node {
 		}
 		this.Reset(mark)
 		// 数组
-		if this.Expect(TokenTypeLBracket) {
-			this.Match(TokenTypeLBracket)
+		if this.Expect(sansLexer.TokenTypeLBracket) {
+			this.Match(sansLexer.TokenTypeLBracket)
 			prop := this.astParseExpression()
 			if prop != nil {
-				this.Match(TokenTypeRBracket)
+				this.Match(sansLexer.TokenTypeRBracket)
 				node := MemberExpression{
 					Object:      subAst,
 					Property:    prop,
@@ -610,8 +611,8 @@ func (this *SansLangParser) astParseCallClassMemberExpressionTail(node Node) Nod
 		return this.astParseCallMemberExpressionTail(node)
 	}
 	// 处理点语法
-	if this.Expect(TokenTypeDot) {
-		this.Match(TokenTypeDot)
+	if this.Expect(sansLexer.TokenTypeDot) {
+		this.Match(sansLexer.TokenTypeDot)
 		prop := this.astParseIdentifier()
 		if prop != nil {
 			node = MemberExpression{
@@ -624,11 +625,11 @@ func (this *SansLangParser) astParseCallClassMemberExpressionTail(node Node) Nod
 	}
 	this.Reset(mark)
 	// 处理数组
-	if this.Expect(TokenTypeLBracket) {
-		this.Match(TokenTypeLBracket)
+	if this.Expect(sansLexer.TokenTypeLBracket) {
+		this.Match(sansLexer.TokenTypeLBracket)
 		prop := this.astParseExpression()
 		if prop != nil {
-			this.Match(TokenTypeRBracket)
+			this.Match(sansLexer.TokenTypeRBracket)
 			node = MemberExpression{
 				Object:      node,
 				Property:    prop,
@@ -654,8 +655,8 @@ func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 		return this.astParseCallMemberExpressionTail(node)
 	}
 	// 处理点语法
-	if this.Expect(TokenTypeDot) {
-		this.Match(TokenTypeDot)
+	if this.Expect(sansLexer.TokenTypeDot) {
+		this.Match(sansLexer.TokenTypeDot)
 		prop := this.astParseIdentifier()
 		if prop != nil {
 			node = MemberExpression{
@@ -668,11 +669,11 @@ func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 	}
 	this.Reset(mark)
 	// 处理数组
-	if this.Expect(TokenTypeLBracket) {
-		this.Match(TokenTypeLBracket)
+	if this.Expect(sansLexer.TokenTypeLBracket) {
+		this.Match(sansLexer.TokenTypeLBracket)
 		prop := this.astParseExpression()
 		if prop != nil {
-			this.Match(TokenTypeRBracket)
+			this.Match(sansLexer.TokenTypeRBracket)
 			node = MemberExpression{
 				Object:      node,
 				Property:    prop,
@@ -688,8 +689,8 @@ func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 
 // not
 func (this *SansLangParser) astParseNotExpression() Node {
-	if this.Expect(TokenTypeNot) {
-		notValue := this.Match(TokenTypeNot)
+	if this.Expect(sansLexer.TokenTypeNot) {
+		notValue := this.Match(sansLexer.TokenTypeNot)
 		if !notValue.Error() {
 			rightAst := this.astParseCallMemberExpression()
 			if rightAst != nil {
@@ -705,7 +706,7 @@ func (this *SansLangParser) astParseNotExpression() Node {
 func (this *SansLangParser) astParseMulDivExpression() Node {
 	leftAst := this.astParseNotExpression()
 	if leftAst != nil {
-		for this.Expect(TokenTypeMul) || this.Expect(TokenTypeDiv) || this.Expect(TokenTypeMod) {
+		for this.Expect(sansLexer.TokenTypeMul) || this.Expect(sansLexer.TokenTypeDiv) || this.Expect(sansLexer.TokenTypeMod) {
 			op := this.Current()
 			this.Next()
 			rightAst := this.astParseNotExpression()
@@ -727,7 +728,7 @@ func (this *SansLangParser) astParseAddSubExpression() Node {
 	// 如果是 a + 1, 就直接返回 a 就好了
 	leftAst := this.astParseMulDivExpression()
 	if leftAst != nil {
-		for this.Expect(TokenTypePlus) || this.Expect(TokenTypeMinus) {
+		for this.Expect(sansLexer.TokenTypePlus) || this.Expect(sansLexer.TokenTypeMinus) {
 			op := this.Current()
 			this.Next()
 			rightAst := this.astParseMulDivExpression()
@@ -746,7 +747,7 @@ func (this *SansLangParser) astParseAddSubExpression() Node {
 func (this *SansLangParser) astParseCompareExpression() Node {
 	leftAst := this.astParseAddSubExpression()
 	if leftAst != nil {
-		for this.Expect(TokenTypeLessThan) || this.Expect(TokenTypeGreaterThan) || this.Expect(TokenTypeLessThanEquals) || this.Expect(TokenTypeGreaterThanEquals) {
+		for this.Expect(sansLexer.TokenTypeLessThan) || this.Expect(sansLexer.TokenTypeGreaterThan) || this.Expect(sansLexer.TokenTypeLessThanEquals) || this.Expect(sansLexer.TokenTypeGreaterThanEquals) {
 			op := this.Current()
 			this.Next()
 			rightAst := this.astParseAddSubExpression()
@@ -764,7 +765,7 @@ func (this *SansLangParser) astParseCompareExpression() Node {
 func (this *SansLangParser) astParseEqualsAndNotEqualExpression() Node {
 	leftAst := this.astParseCompareExpression()
 	if leftAst != nil {
-		for this.Expect(TokenTypeNotEquals) || this.Expect(TokenTypeEquals) {
+		for this.Expect(sansLexer.TokenTypeNotEquals) || this.Expect(sansLexer.TokenTypeEquals) {
 			op := this.Current()
 			this.Next()
 			rightAst := this.astParseCompareExpression()
@@ -782,7 +783,7 @@ func (this *SansLangParser) astParseEqualsAndNotEqualExpression() Node {
 func (this *SansLangParser) astParseAndOrExpression() Node {
 	leftAst := this.astParseEqualsAndNotEqualExpression()
 	if leftAst != nil {
-		for this.Expect(TokenTypeAnd) || this.Expect(TokenTypeOr) {
+		for this.Expect(sansLexer.TokenTypeAnd) || this.Expect(sansLexer.TokenTypeOr) {
 			op := this.Current()
 			this.Next()
 			rightAst := this.astParseEqualsAndNotEqualExpression()
@@ -801,7 +802,7 @@ func (this *SansLangParser) astParseAssignmentExpression() Node {
 	leftAst := this.astParseAndOrExpression()
 	if leftAst != nil {
 		op := this.Current()
-		if this.Expect(TokenTypeAssign) {
+		if this.Expect(sansLexer.TokenTypeAssign) {
 			this.Next()
 			rightAst := this.astParseAndOrExpression()
 			if rightAst != nil {
@@ -817,7 +818,7 @@ func (this *SansLangParser) astParseAssignExpression() Node {
 	leftAst := this.astParseAssignmentExpression()
 	if leftAst != nil {
 		op := this.Current()
-		if this.Expect(TokenTypePlusAssign) || this.Expect(TokenTypeMinusAssign) || this.Expect(TokenTypeMulAssign) || this.Expect(TokenTypeDivAssign) {
+		if this.Expect(sansLexer.TokenTypePlusAssign) || this.Expect(sansLexer.TokenTypeMinusAssign) || this.Expect(sansLexer.TokenTypeMulAssign) || this.Expect(sansLexer.TokenTypeDivAssign) {
 			this.Next()
 			rightAst := this.astParseAssignmentExpression()
 			if rightAst != nil {
@@ -906,15 +907,15 @@ func (this *SansLangParser) astParseLiteral() Node {
 
 func (this *SansLangParser) astParseDict() Node {
 	kvs := []Node{}
-	if this.Expect(TokenTypeLBrace) {
-		lb := this.Match(TokenTypeLBrace)
+	if this.Expect(sansLexer.TokenTypeLBrace) {
+		lb := this.Match(sansLexer.TokenTypeLBrace)
 		if !lb.Error() {
 			kv := this.astParseAssignment()
 			if kv != nil {
 				kvs = append(kvs, kv)
 			}
-			for this.Expect(TokenTypeComma) {
-				comma := this.Match(TokenTypeComma)
+			for this.Expect(sansLexer.TokenTypeComma) {
+				comma := this.Match(sansLexer.TokenTypeComma)
 				if !comma.Error() {
 					kv = this.astParseAssignment()
 					if kv != nil {
@@ -926,7 +927,7 @@ func (this *SansLangParser) astParseDict() Node {
 					break
 				}
 			}
-			rb := this.Match(TokenTypeRBrace)
+			rb := this.Match(sansLexer.TokenTypeRBrace)
 			if !rb.Error() {
 				return DictLiteral{Values: kvs}
 			}
@@ -945,12 +946,12 @@ func (this *SansLangParser) astParseFactor() Node {
 	//     | functionExpression
 	//     | classExpression
 	mark := this.Mark()
-	if this.Expect(TokenTypeLParen) {
-		lp := this.Match(TokenTypeLParen)
+	if this.Expect(sansLexer.TokenTypeLParen) {
+		lp := this.Match(sansLexer.TokenTypeLParen)
 		if !lp.Error() {
 			exp := this.astParseExpression()
 			if exp != nil {
-				this.Match(TokenTypeRParen)
+				this.Match(sansLexer.TokenTypeRParen)
 				return exp
 			}
 		}
@@ -976,32 +977,32 @@ func (this *SansLangParser) astParseFactor() Node {
 		return value
 	}
 
-	if this.Expect(TokenTypeClass) {
-		this.Match(TokenTypeClass)
+	if this.Expect(sansLexer.TokenTypeClass) {
+		this.Match(sansLexer.TokenTypeClass)
 		return ClassLiteral{}
 	}
 	return nil
 }
 
 func (this *SansLangParser) astParseIdentifier() Node {
-	if this.Expect(TokenTypeId) {
-		id := this.Match(TokenTypeId)
+	if this.Expect(sansLexer.TokenTypeId) {
+		id := this.Match(sansLexer.TokenTypeId)
 		return Identifier{Value: id.Value}
 	}
 	return nil
 }
 
 func (this *SansLangParser) astParseString() Node {
-	if this.Expect(TokenTypeString) {
-		id := this.Match(TokenTypeString)
+	if this.Expect(sansLexer.TokenTypeString) {
+		id := this.Match(sansLexer.TokenTypeString)
 		return StringLiteral{Value: id.Value}
 	}
 	return nil
 }
 
 func (this *SansLangParser) astParseNumber() Node {
-	if this.Expect(TokenTypeNumeric) {
-		id := this.Match(TokenTypeNumeric)
+	if this.Expect(sansLexer.TokenTypeNumeric) {
+		id := this.Match(sansLexer.TokenTypeNumeric)
 		floatValue, err := strconv.ParseFloat(id.Value, 64)
 		if err != nil {
 			fmt.Printf("Parse number error: %s\n", err)
@@ -1014,13 +1015,13 @@ func (this *SansLangParser) astParseNumber() Node {
 
 func (this *SansLangParser) astParseArray() Node {
 	exps := []Node{}
-	if this.Expect(TokenTypeLBracket) {
-		lb := this.Match(TokenTypeLBracket)
+	if this.Expect(sansLexer.TokenTypeLBracket) {
+		lb := this.Match(sansLexer.TokenTypeLBracket)
 		if !lb.Error() {
 			exp := this.astParseExpression()
 			exps = append(exps, exp)
-			for this.Expect(TokenTypeComma) {
-				comma := this.Match(TokenTypeComma)
+			for this.Expect(sansLexer.TokenTypeComma) {
+				comma := this.Match(sansLexer.TokenTypeComma)
 				if !comma.Error() {
 					exp = this.astParseExpression()
 					if exp != nil {
@@ -1032,7 +1033,7 @@ func (this *SansLangParser) astParseArray() Node {
 					break
 				}
 			}
-			rb := this.Match(TokenTypeRBracket)
+			rb := this.Match(sansLexer.TokenTypeRBracket)
 			if !rb.Error() {
 				return ArrayLiteral{Values: exps}
 			}
@@ -1042,16 +1043,16 @@ func (this *SansLangParser) astParseArray() Node {
 }
 
 func (this *SansLangParser) astParseNull() Node {
-	if this.Expect(TokenTypeNull) {
-		this.Match(TokenTypeNull)
+	if this.Expect(sansLexer.TokenTypeNull) {
+		this.Match(sansLexer.TokenTypeNull)
 		return NullLiteral{}
 	}
 	return nil
 }
 
 func (this *SansLangParser) astParseBoolean() Node {
-	if this.Expect(TokenTypeBoolean) {
-		boolValue := this.Match(TokenTypeBoolean)
+	if this.Expect(sansLexer.TokenTypeBoolean) {
+		boolValue := this.Match(sansLexer.TokenTypeBoolean)
 		var v bool
 		if boolValue.Value == "true" {
 			v = true

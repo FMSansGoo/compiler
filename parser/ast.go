@@ -1,4 +1,4 @@
-package main
+package parser
 
 // Node接口
 type Node interface {

@@ -1,6 +1,9 @@
-package main
+package semantic
 
-import "fmt"
+import (
+	"fmt"
+	"go-compiler/utils"
+)
 
 type ScopeV2 struct {
 	Table  map[string]Signature
@@ -24,7 +27,7 @@ func (s *ScopeV2) AddSignature(name string, ReturnType AllType, isStatic bool, v
 	if signature, ok := s.Table[name]; ok && signature.Name == name &&
 		(signature.ReturnType.ValueType() == ClassType{}.ValueType() || signature.ReturnType.ValueType() == FunctionType{}.ValueType()) {
 		s.LogNowScope()
-		logError("not allow the same function name or class name", name)
+		utils.LogError("not allow the same function name or class name", name)
 	}
 	s.Table[name] = Signature{
 		Name:       name,

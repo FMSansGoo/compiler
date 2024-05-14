@@ -1,8 +1,10 @@
-package main
+package semantic
 
 import (
 	"encoding/json"
 	"fmt"
+	lexer2 "go-compiler/lexer"
+	parser2 "go-compiler/parser"
 	"testing"
 )
 
@@ -27,7 +29,7 @@ func TestSemanticAnalysisV2(t *testing.T) {
 }
 
 func testSemanticAnalysis1_1() {
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		var a = 1
 		var b = "string"
@@ -38,13 +40,13 @@ func testSemanticAnalysis1_1() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -60,12 +62,12 @@ func testSemanticAnalysis1_1() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis2_1() {
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		var a = 1 + 1 * 1 / 3 - 1
 		var aa = true
@@ -78,13 +80,13 @@ func testSemanticAnalysis2_1() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -100,12 +102,12 @@ func testSemanticAnalysis2_1() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis3_1() {
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		while(true){
 			break
@@ -113,13 +115,13 @@ func testSemanticAnalysis3_1() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -135,12 +137,12 @@ func testSemanticAnalysis3_1() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis3_2() {
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		for(var a = 1; a <= 10; a += 1) {
 
@@ -148,13 +150,13 @@ func testSemanticAnalysis3_2() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -170,12 +172,12 @@ func testSemanticAnalysis3_2() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis3_3() {
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		var a = 1
 		if(a == 1){
@@ -188,13 +190,13 @@ func testSemanticAnalysis3_3() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -210,12 +212,12 @@ func testSemanticAnalysis3_3() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis4_1() {
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	// todo 还需要做一下传参的检测
 	lexer.Code = `
 		const log = function(a) {
@@ -230,13 +232,13 @@ func testSemanticAnalysis4_1() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -252,14 +254,14 @@ func testSemanticAnalysis4_1() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis5_1() {
 	// todo 这的 class 可能有点问题，先这样吧，
 	// 类函数
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		class A {
 			const cls.age = 1
@@ -270,13 +272,13 @@ func testSemanticAnalysis5_1() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -292,14 +294,14 @@ func testSemanticAnalysis5_1() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis5_2() {
 	// todo 这的 class 可能有点问题，先这样吧，
 	// 类函数
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		class A {
 			const cls.age = 1
@@ -313,13 +315,13 @@ func testSemanticAnalysis5_2() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -335,14 +337,14 @@ func testSemanticAnalysis5_2() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis5_3() {
 	// todo 这的 class 可能有点问题，先这样吧，
 	// 类函数
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		class B {
 			const new = function() {
@@ -360,13 +362,13 @@ func testSemanticAnalysis5_3() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -382,14 +384,14 @@ func testSemanticAnalysis5_3() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis5_4() {
 	// todo 这的 class 可能有点问题，先这样吧，
 	// 类函数
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		class A {
 			const new = function() {
@@ -399,13 +401,13 @@ func testSemanticAnalysis5_4() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -421,13 +423,13 @@ func testSemanticAnalysis5_4() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis5_5() {
 	// 类函数
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		class B {
 			const new = function() {
@@ -445,13 +447,13 @@ func testSemanticAnalysis5_5() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -467,14 +469,14 @@ func testSemanticAnalysis5_5() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }
 
 func testSemanticAnalysis5_6() {
 	// todo 这的 class 可能有点问题，先这样吧，
 	// 类函数
-	lexer := SansLangLexer{}
+	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		class A {
 			const cls.age = 1
@@ -490,13 +492,13 @@ func testSemanticAnalysis5_6() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := lexer2.TokenList{
 		Tokens: tokenList,
 	}
 	fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
 	fmt.Println("====================== token end =======================")
 	fmt.Println("====================== parser init =======================")
-	parser := NewSansLangParser(&tokensLexer)
+	parser := parser2.NewSansLangParser(&tokensLexer)
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
@@ -512,6 +514,6 @@ func testSemanticAnalysis5_6() {
 	fmt.Println("====================== parser end =======================")
 	fmt.Println("====================== NewSemanticAnalysis init =======================")
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
-	semanticAnalysis.visit()
+	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
 }

@@ -1,4 +1,4 @@
-package main
+package lexer
 
 import (
 	"fmt"
@@ -320,7 +320,7 @@ type TokenList struct {
 	index  int
 }
 
-func (tl *TokenList) nextToken() Token {
+func (tl *TokenList) NextToken() Token {
 	//fmt.Printf("Current: %d\n", l.Position)
 	if tl.index == len(tl.Tokens) {
 		return Token{

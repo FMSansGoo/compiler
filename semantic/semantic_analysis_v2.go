@@ -1,13 +1,18 @@
-package main
+package semantic
 
-import "fmt"
+import (
+	"fmt"
+	"go-compiler/lexer"
+	"go-compiler/parser"
+	"go-compiler/utils"
+)
 
 type SemanticAnalysisV2 struct {
-	Ast          Program
+	Ast          parser.Program
 	CurrentScope *ScopeV2
 }
 
-func NewSemanticAnalysisV2(program Program) *SemanticAnalysisV2 {
+func NewSemanticAnalysisV2(program parser.Program) *SemanticAnalysisV2 {
 	s := &SemanticAnalysisV2{
 		Ast:          program,
 		CurrentScope: NewScopeV2(),
@@ -15,110 +20,110 @@ func NewSemanticAnalysisV2(program Program) *SemanticAnalysisV2 {
 	return s
 }
 
-func (this *SemanticAnalysisV2) visit() {
-	if this.Ast.Type() != AstTypeProgram.Name() {
+func (this *SemanticAnalysisV2) Visit() {
+	if this.Ast.Type() != parser.AstTypeProgram.Name() {
 		return
 	}
 	this.visitProgram(this.Ast.Body)
 
 }
 
-func (this *SemanticAnalysisV2) visitProgram(body []Node) {
+func (this *SemanticAnalysisV2) visitProgram(body []parser.Node) {
 	for _, item := range body {
-		logInfo("visitProgram visit item", item.Type())
+		utils.LogInfo("visitProgram visit item", item.Type())
 		switch item.Type() {
 		// 变量定义
-		case AstTypeVariableDeclaration.Name():
+		case parser.AstTypeVariableDeclaration.Name():
 			this.visitVariableDeclaration(item)
 		//// 赋值
-		case AstTypeAssignmentExpression.Name():
+		case parser.AstTypeAssignmentExpression.Name():
 			this.visitAssignmentExpression(item)
 		//// 访问 if
-		case AstTypeIfStatement.Name():
+		case parser.AstTypeIfStatement.Name():
 			this.visitIfStatement(item)
 		// 访问 while
-		case AstTypeWhileStatement.Name():
+		case parser.AstTypeWhileStatement.Name():
 			this.visitWhileStatement(item)
 		//// 访问 for
-		case AstTypeForStatement.Name():
+		case parser.AstTypeForStatement.Name():
 			this.visitForStatement(item)
 		//// 访问 block
-		case AstTypeBlockStatement.Name():
+		case parser.AstTypeBlockStatement.Name():
 			this.visitBlockStatement(item)
 		// 访问 class
-		case AstTypeClassExpression.Name():
+		case parser.AstTypeClassExpression.Name():
 			this.visitClassExpression(item)
 		// 调用函数
-		case AstTypeCallExpression.Name():
+		case parser.AstTypeCallExpression.Name():
 			this.visitCallExpression(item)
 		default:
-			logError("visitProgram visit item default", item.Type())
+			utils.LogError("visitProgram visit item default", item.Type())
 		}
-		logInfo("visitProgram visit item after currentScope")
+		utils.LogInfo("visitProgram visit item after currentScope")
 		this.CurrentScope.LogNowScope()
 	}
 }
 
 // 变量定义
-func (this *SemanticAnalysisV2) visitVariableDeclaration(node Node) {
+func (this *SemanticAnalysisV2) visitVariableDeclaration(node parser.Node) {
 	////type VariableDeclaration struct {
 	////	Kind  string // kind属性
 	////	Name  Node   // name属性
 	////	Value Node   // value属性
 	////}
-	varType := node.(VariableDeclaration).Kind
-	left := node.(VariableDeclaration).Name
+	varType := node.(parser.VariableDeclaration).Kind
+	left := node.(parser.VariableDeclaration).Name
 	var variableName string
 	switch left.Type() {
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		_, variableName, _ = this.visitIdentifier(left)
 	default:
-		logError("visitVariableDeclaration invalid left variable declaration", left)
+		utils.LogError("visitVariableDeclaration invalid left variable declaration", left)
 		return
 	}
 	// 做一下限制，变量名不为空
 	if len(variableName) == 0 {
-		logError("visitVariableDeclaration invalid left variable declaration", left)
+		utils.LogError("visitVariableDeclaration invalid left variable declaration", left)
 		return
 	}
 	//
 	var valueType AllType
-	right := node.(VariableDeclaration).Value
+	right := node.(parser.VariableDeclaration).Value
 
 	switch right.Type() {
 	// 访问函数，函数的返回类型
-	case AstTypeFunctionExpression.Name():
+	case parser.AstTypeFunctionExpression.Name():
 		valueType = this.visitFunctionExpression(right)
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		valueType = this.visitBinaryExpression(right)
-	case AstTypeNumberLiteral.Name():
+	case parser.AstTypeNumberLiteral.Name():
 		valueType = this.visitNumberLiteral(right)
-	case AstTypeNullLiteral.Name():
+	case parser.AstTypeNullLiteral.Name():
 		valueType = this.visitNullLiteral(right)
-	case AstTypeBooleanLiteral.Name():
+	case parser.AstTypeBooleanLiteral.Name():
 		valueType = this.visitBooleanLiteral(right)
-	case AstTypeStringLiteral.Name():
+	case parser.AstTypeStringLiteral.Name():
 		valueType, _ = this.visitStringLiteral(right)
-	case AstTypeArrayLiteral.Name():
+	case parser.AstTypeArrayLiteral.Name():
 		valueType = this.visitArrayLiteral(right)
-	case AstTypeUnaryExpression.Name():
+	case parser.AstTypeUnaryExpression.Name():
 		valueType = this.visitUnaryExpression(right)
-	case AstTypeDictLiteral.Name():
+	case parser.AstTypeDictLiteral.Name():
 		valueType = this.visitDictLiteral(right)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		var varName string
 		_, varName, _ = this.visitIdentifier(right)
 		signature, ok := this.CurrentScope.LookupSignature(varName)
 		if ok {
 			valueType = signature.ReturnType
 		} else {
-			logError("undeclared variable", varName)
+			utils.LogError("undeclared variable", varName)
 			return
 		}
-	case AstTypeCallExpression.Name():
+	case parser.AstTypeCallExpression.Name():
 		valueType, _ = this.visitCallExpression(right)
 	default:
-		logError("visitVariableDeclaration invalid right variable declaration", right)
+		utils.LogError("visitVariableDeclaration invalid right variable declaration", right)
 		return
 	}
 	// 先不处理常量方法
@@ -130,60 +135,60 @@ func (this *SemanticAnalysisV2) visitVariableDeclaration(node Node) {
 }
 
 // 赋值
-func (this *SemanticAnalysisV2) visitAssignmentExpression(node Node) {
-	left := node.(AssignmentExpression).Left
-	logInfo("visitClassVariableDeclaration visitAssignmentExpression", node.(AssignmentExpression))
+func (this *SemanticAnalysisV2) visitAssignmentExpression(node parser.Node) {
+	left := node.(parser.AssignmentExpression).Left
+	utils.LogInfo("visitClassVariableDeclaration visitAssignmentExpression", node.(parser.AssignmentExpression))
 	var variableName string
 	switch left.Type() {
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		_, variableName, _ = this.visitIdentifier(left)
 	//case AstTypeMemberExpression.Name():
 	//	_, variableName = this.visitMemberExpression(left)
 	default:
-		logError("invalid assignment expression", left)
+		utils.LogError("invalid assignment expression", left)
 		return
 	}
 	fmt.Printf("visitAssignmentExpression variableName %v left:%v\n", variableName, left)
 	varSignature, ok := this.CurrentScope.LookupSignature(variableName)
 	// const 检查
-	if ok && varSignature.VarType == TokenTypeConst.Name() {
-		logError("const variable cannot be reassigned", variableName)
+	if ok && varSignature.VarType == lexer.TokenTypeConst.Name() {
+		utils.LogError("const variable cannot be reassigned", variableName)
 		return
 	}
 
-	varType := TokenTypeVar.Name()
+	varType := lexer.TokenTypeVar.Name()
 	var valueType AllType
 	valueType = UnKnownType{}
 	//valueType := ValueTypeIdentifier
-	right := node.(AssignmentExpression).Right
+	right := node.(parser.AssignmentExpression).Right
 	switch right.Type() {
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		valueType = this.visitBinaryExpression(right)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		valueType, _, varType = this.visitIdentifier(right)
-	case AstTypeNumberLiteral.Name():
+	case parser.AstTypeNumberLiteral.Name():
 		valueType = this.visitNumberLiteral(right)
-	case AstTypeStringLiteral.Name():
+	case parser.AstTypeStringLiteral.Name():
 		valueType, _ = this.visitStringLiteral(right)
-	case AstTypeBooleanLiteral.Name():
+	case parser.AstTypeBooleanLiteral.Name():
 		valueType = this.visitBooleanLiteral(right)
-	case AstTypeArrayLiteral.Name():
+	case parser.AstTypeArrayLiteral.Name():
 		valueType = this.visitArrayLiteral(right)
-	case AstTypeDictLiteral.Name():
+	case parser.AstTypeDictLiteral.Name():
 		valueType = this.visitDictLiteral(right)
-	case AstTypeNullLiteral.Name():
+	case parser.AstTypeNullLiteral.Name():
 		valueType = this.visitNullLiteral(right)
-	case AstTypeUnaryExpression.Name():
+	case parser.AstTypeUnaryExpression.Name():
 		valueType = this.visitUnaryExpression(right)
-	case AstTypeCallExpression.Name():
+	case parser.AstTypeCallExpression.Name():
 		valueType, _ = this.visitCallExpression(right)
 	default:
-		logError("invalid assignment expression", right)
+		utils.LogError("invalid assignment expression", right)
 	}
 	unknownValueType := UnKnownType{}
 	// 强类型检查，如果右边的值不是同一个类型就报错
 	if ok && varSignature.ReturnType != valueType && valueType.ValueType() != unknownValueType.ValueType() {
-		logError("variable cannot be reassigned to another type", variableName, varSignature, valueType)
+		utils.LogError("variable cannot be reassigned to another type", variableName, varSignature, valueType)
 		return
 	}
 	// 如果判断不出类型，就用原有的类型
@@ -194,11 +199,11 @@ func (this *SemanticAnalysisV2) visitAssignmentExpression(node Node) {
 	return
 }
 
-func (this *SemanticAnalysisV2) visitFunctionExpression(node Node) (functionType AllType) {
-	if node.Type() != AstTypeFunctionExpression.Name() {
+func (this *SemanticAnalysisV2) visitFunctionExpression(node parser.Node) (functionType AllType) {
+	if node.Type() != parser.AstTypeFunctionExpression.Name() {
 		return UnKnownType{}
 	}
-	params := node.(FunctionExpression).Params
+	params := node.(parser.FunctionExpression).Params
 
 	// 开始新的作用域
 	funcScope := NewScopeV2()
@@ -211,8 +216,8 @@ func (this *SemanticAnalysisV2) visitFunctionExpression(node Node) (functionType
 
 	signatures := make([]Signature, 0)
 	for _, param := range params {
-		if param.Type() != AstTypeIdentifier.Name() {
-			logError("param must be identifier", param.Type())
+		if param.Type() != parser.AstTypeIdentifier.Name() {
+			utils.LogError("param must be identifier", param.Type())
 			return UnKnownType{}
 		}
 		valueType, variableName, varType := this.visitIdentifier(param)
@@ -225,12 +230,12 @@ func (this *SemanticAnalysisV2) visitFunctionExpression(node Node) (functionType
 		signatures = append(signatures, s)
 		this.CurrentScope.AddSignature(variableName, valueType, false, varType)
 	}
-	body := node.(FunctionExpression).Body
-	logInfo("visitFunctionExpression", params, body)
+	body := node.(parser.FunctionExpression).Body
+	utils.LogInfo("visitFunctionExpression", params, body)
 
 	var funcReturnType AllType
 	funcReturnType = VoidType{}
-	if body.Type() == AstTypeBlockStatement.Name() {
+	if body.Type() == parser.AstTypeBlockStatement.Name() {
 		funcReturnType = this.visitBlockStatement(body)
 	}
 
@@ -241,53 +246,53 @@ func (this *SemanticAnalysisV2) visitFunctionExpression(node Node) (functionType
 }
 
 // 表达式
-func (this *SemanticAnalysisV2) visitBinaryExpression(node Node) AllType {
+func (this *SemanticAnalysisV2) visitBinaryExpression(node parser.Node) AllType {
 	// BinaryExpression节点结构
 	//type BinaryExpression struct {
 	//	Operator string // operator属性
 	//	Left     Node   // left属性
 	//	Right    Node   // right属性
 	//}
-	if node.Type() != AstTypeBinaryExpression.Name() {
+	if node.Type() != parser.AstTypeBinaryExpression.Name() {
 		return UnKnownType{}
 	}
 	// op
-	switch node.(BinaryExpression).Operator {
+	switch node.(parser.BinaryExpression).Operator {
 	case "+":
 		// 这里接受多个类型
-		left := node.(BinaryExpression).Left
+		left := node.(parser.BinaryExpression).Left
 		var leftValueType AllType
 		switch left.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			leftValueType = this.visitBinaryExpression(left)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			leftValueType = this.visitNumberLiteral(left)
-		case AstTypeStringLiteral.Name():
+		case parser.AstTypeStringLiteral.Name():
 			leftValueType, _ = this.visitStringLiteral(left)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			leftValueType, _, _ = this.visitIdentifier(left)
 		default:
-			logError("左值类型错误", node.(BinaryExpression).Left)
+			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return UnKnownType{}
 		}
 
 		// right
-		right := node.(BinaryExpression).Right
+		right := node.(parser.BinaryExpression).Right
 		var rightValueType AllType
 		switch right.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			rightValueType = this.visitBinaryExpression(right)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			rightValueType = this.visitNumberLiteral(right)
-		case AstTypeStringLiteral.Name():
+		case parser.AstTypeStringLiteral.Name():
 			rightValueType, _ = this.visitStringLiteral(right)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			rightValueType, _, _ = this.visitIdentifier(right)
 		default:
-			logError("右值类型错误", node.(BinaryExpression).Right)
+			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
-		logInfo("visitBinaryExpression", leftValueType, rightValueType)
+		utils.LogInfo("visitBinaryExpression", leftValueType, rightValueType)
 
 		isString := false
 
@@ -296,7 +301,7 @@ func (this *SemanticAnalysisV2) visitBinaryExpression(node Node) AllType {
 		case StringType{}:
 			isString = true
 		default:
-			logError("左值类型错误", node.(BinaryExpression).Left)
+			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return UnKnownType{}
 		}
 
@@ -305,7 +310,7 @@ func (this *SemanticAnalysisV2) visitBinaryExpression(node Node) AllType {
 		case StringType{}:
 			isString = true
 		default:
-			logError("右值类型错误", node.(BinaryExpression).Right)
+			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
 
@@ -327,43 +332,43 @@ func (this *SemanticAnalysisV2) visitBinaryExpression(node Node) AllType {
 		fallthrough
 	case "/=":
 		// left
-		left := node.(BinaryExpression).Left
+		left := node.(parser.BinaryExpression).Left
 		var leftValueType AllType
 		switch left.Type() {
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			leftValueType, _, _ = this.visitIdentifier(left)
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			leftValueType = this.visitBinaryExpression(left)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			leftValueType = this.visitNumberLiteral(left)
 		default:
-			logError("左值类型错误", node.(BinaryExpression).Left)
+			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return UnKnownType{}
 		}
 
 		// right
-		right := node.(BinaryExpression).Right
+		right := node.(parser.BinaryExpression).Right
 		var rightValueType AllType
 		switch right.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			rightValueType = this.visitBinaryExpression(right)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			rightValueType = this.visitNumberLiteral(right)
 		default:
-			logError("右值类型错误", node.(BinaryExpression).Right)
+			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
 		switch leftValueType {
 		case NumberType{}:
 		default:
-			logError("左值类型错误", node.(BinaryExpression).Left)
+			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return UnKnownType{}
 		}
 
 		switch rightValueType {
 		case NumberType{}:
 		default:
-			logError("右值类型错误", node.(BinaryExpression).Right)
+			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
 		return NumberType{}
@@ -375,42 +380,42 @@ func (this *SemanticAnalysisV2) visitBinaryExpression(node Node) AllType {
 		fallthrough
 	case "<=":
 		// left
-		left := node.(BinaryExpression).Left
+		left := node.(parser.BinaryExpression).Left
 		var leftValueType AllType
 		switch left.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			leftValueType = this.visitBinaryExpression(left)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			leftValueType = this.visitNumberLiteral(left)
-		case AstTypeStringLiteral.Name():
+		case parser.AstTypeStringLiteral.Name():
 			leftValueType, _ = this.visitStringLiteral(left)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			leftValueType, _, _ = this.visitIdentifier(left)
 		default:
-			logError("左值类型错误", node.(BinaryExpression).Left)
+			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return UnKnownType{}
 		}
 
 		// right
-		right := node.(BinaryExpression).Right
+		right := node.(parser.BinaryExpression).Right
 		var rightValueType AllType
 		switch right.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			rightValueType = this.visitBinaryExpression(right)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			rightValueType = this.visitNumberLiteral(right)
-		case AstTypeStringLiteral.Name():
+		case parser.AstTypeStringLiteral.Name():
 			rightValueType, _ = this.visitStringLiteral(right)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			rightValueType, _, _ = this.visitIdentifier(right)
 		default:
-			logError("右值类型错误", node.(BinaryExpression).Right)
+			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
-		logInfo("visitBinaryExpression", leftValueType, rightValueType)
+		utils.LogInfo("visitBinaryExpression", leftValueType, rightValueType)
 
 		if leftValueType != rightValueType {
-			logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
+			utils.LogError("类型不匹配", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
 		return BooleanType{}
@@ -418,50 +423,50 @@ func (this *SemanticAnalysisV2) visitBinaryExpression(node Node) AllType {
 		fallthrough
 	case "!=":
 		// left
-		left := node.(BinaryExpression).Left
+		left := node.(parser.BinaryExpression).Left
 		var leftValueType AllType
 		switch left.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			leftValueType = this.visitBinaryExpression(left)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			leftValueType = this.visitNumberLiteral(left)
-		case AstTypeStringLiteral.Name():
+		case parser.AstTypeStringLiteral.Name():
 			leftValueType, _ = this.visitStringLiteral(left)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			leftValueType, _, _ = this.visitIdentifier(left)
-		case AstTypeBooleanLiteral.Name():
+		case parser.AstTypeBooleanLiteral.Name():
 			leftValueType = this.visitBooleanLiteral(left)
-		case AstTypeNullLiteral.Name():
+		case parser.AstTypeNullLiteral.Name():
 			leftValueType = this.visitNullLiteral(left)
 		default:
-			logError("左值类型错误", node.(BinaryExpression).Left)
+			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return UnKnownType{}
 		}
 
 		// right
-		right := node.(BinaryExpression).Right
+		right := node.(parser.BinaryExpression).Right
 		var rightValueType AllType
 		switch right.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			rightValueType = this.visitBinaryExpression(right)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			rightValueType = this.visitNumberLiteral(right)
-		case AstTypeStringLiteral.Name():
+		case parser.AstTypeStringLiteral.Name():
 			rightValueType, _ = this.visitStringLiteral(right)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			rightValueType, _, _ = this.visitIdentifier(right)
-		case AstTypeBooleanLiteral.Name():
+		case parser.AstTypeBooleanLiteral.Name():
 			rightValueType = this.visitBooleanLiteral(right)
-		case AstTypeNullLiteral.Name():
+		case parser.AstTypeNullLiteral.Name():
 			rightValueType = this.visitNullLiteral(right)
 		default:
-			logError("右值类型错误", node.(BinaryExpression).Right)
+			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
-		logInfo("visitBinaryExpression", leftValueType, rightValueType)
+		utils.LogInfo("visitBinaryExpression", leftValueType, rightValueType)
 
 		if leftValueType != rightValueType {
-			logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
+			utils.LogError("类型不匹配", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
 		return BooleanType{}
@@ -469,153 +474,153 @@ func (this *SemanticAnalysisV2) visitBinaryExpression(node Node) AllType {
 		fallthrough
 	case "or":
 		// left
-		left := node.(BinaryExpression).Left
+		left := node.(parser.BinaryExpression).Left
 		var leftValueType AllType
 		switch left.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			leftValueType = this.visitBinaryExpression(left)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			leftValueType, _, _ = this.visitIdentifier(left)
-		case AstTypeBooleanLiteral.Name():
+		case parser.AstTypeBooleanLiteral.Name():
 			leftValueType = this.visitBooleanLiteral(left)
 		default:
-			logError("左值类型错误", node.(BinaryExpression).Left)
+			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return UnKnownType{}
 		}
 
 		// right
-		right := node.(BinaryExpression).Right
+		right := node.(parser.BinaryExpression).Right
 		var rightValueType AllType
 		switch right.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			rightValueType = this.visitBinaryExpression(right)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			rightValueType, _, _ = this.visitIdentifier(right)
-		case AstTypeBooleanLiteral.Name():
+		case parser.AstTypeBooleanLiteral.Name():
 			rightValueType = this.visitBooleanLiteral(right)
 		default:
-			logError("右值类型错误", node.(BinaryExpression).Right)
+			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
-		logInfo("in and not visitBinaryExpression", leftValueType, rightValueType)
+		utils.LogInfo("in and not visitBinaryExpression", leftValueType, rightValueType)
 
 		if (leftValueType.ValueType() != BooleanType{}.ValueType()) && (rightValueType.ValueType() != BooleanType{}.ValueType()) {
-			logError("类型不匹配", node.(BinaryExpression).Left, node.(BinaryExpression).Right)
+			utils.LogError("类型不匹配", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
 			return UnKnownType{}
 		}
 		return BooleanType{}
 	default:
-		logError("not support binary expression operator", node.(BinaryExpression).Operator)
+		utils.LogError("not support binary expression operator", node.(parser.BinaryExpression).Operator)
 		return UnKnownType{}
 	}
 }
 
 // not
-func (this *SemanticAnalysisV2) visitUnaryExpression(node Node) AllType {
-	if node.Type() != AstTypeUnaryExpression.Name() {
+func (this *SemanticAnalysisV2) visitUnaryExpression(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeUnaryExpression.Name() {
 		return UnKnownType{}
 	}
-	op := node.(UnaryExpression).Operator
+	op := node.(parser.UnaryExpression).Operator
 	switch op {
 	case "not":
 		var vValueType AllType
 		// not 后面只能加 identifier / bool
-		v := node.(UnaryExpression).Value
+		v := node.(parser.UnaryExpression).Value
 		switch v.Type() {
-		case AstTypeBinaryExpression.Name():
+		case parser.AstTypeBinaryExpression.Name():
 			vValueType = this.visitBinaryExpression(v)
-		case AstTypeIdentifier.Name():
+		case parser.AstTypeIdentifier.Name():
 			vValueType, _, _ = this.visitIdentifier(v)
-		case AstTypeBooleanLiteral.Name():
+		case parser.AstTypeBooleanLiteral.Name():
 			vValueType = this.visitBooleanLiteral(v)
 		}
 		boolType := BooleanType{}.ValueType()
 		if vValueType.ValueType() != boolType {
-			logError("not value type error", vValueType)
+			utils.LogError("not value type error", vValueType)
 			return UnKnownType{}
 		}
 		return BooleanType{}
 	default:
-		logError("not support unary expression operator", node.(UnaryExpression).Operator)
+		utils.LogError("not support unary expression operator", node.(parser.UnaryExpression).Operator)
 		return UnKnownType{}
 	}
 
 }
 
-func (this *SemanticAnalysisV2) visitIdentifier(node Node) (valueType AllType, variableName string, varType string) {
-	if node.Type() != AstTypeIdentifier.Name() {
+func (this *SemanticAnalysisV2) visitIdentifier(node parser.Node) (valueType AllType, variableName string, varType string) {
+	if node.Type() != parser.AstTypeIdentifier.Name() {
 		return VoidType{}, "", varType
 	}
-	signature, ok := this.CurrentScope.LookupSignature(node.(Identifier).Value)
+	signature, ok := this.CurrentScope.LookupSignature(node.(parser.Identifier).Value)
 	if ok {
 		return signature.ReturnType, signature.Name, varType
 	}
-	return UnKnownType{}, node.(Identifier).Value, varType
+	return UnKnownType{}, node.(parser.Identifier).Value, varType
 }
 
-func (this *SemanticAnalysisV2) visitStringLiteral(node Node) (valueType AllType, value string) {
-	if node.Type() != AstTypeStringLiteral.Name() {
+func (this *SemanticAnalysisV2) visitStringLiteral(node parser.Node) (valueType AllType, value string) {
+	if node.Type() != parser.AstTypeStringLiteral.Name() {
 		return VoidType{}, ""
 	}
-	value = node.(StringLiteral).Value
+	value = node.(parser.StringLiteral).Value
 	return StringType{}, value
 }
 
-func (this *SemanticAnalysisV2) visitBooleanLiteral(node Node) AllType {
-	if node.Type() != AstTypeBooleanLiteral.Name() {
+func (this *SemanticAnalysisV2) visitBooleanLiteral(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeBooleanLiteral.Name() {
 		return VoidType{}
 	}
 	return BooleanType{}
 }
 
-func (this *SemanticAnalysisV2) visitNullLiteral(node Node) AllType {
-	if node.Type() != AstTypeNullLiteral.Name() {
+func (this *SemanticAnalysisV2) visitNullLiteral(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeNullLiteral.Name() {
 		return VoidType{}
 	}
 	return NullType{}
 }
 
-func (this *SemanticAnalysisV2) visitNumberLiteral(node Node) AllType {
-	if node.Type() != AstTypeNumberLiteral.Name() {
+func (this *SemanticAnalysisV2) visitNumberLiteral(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeNumberLiteral.Name() {
 		return VoidType{}
 	}
 	return NumberType{}
 }
 
-func (this *SemanticAnalysisV2) visitWhileStatement(node Node) AllType {
-	if node.Type() != AstTypeWhileStatement.Name() {
+func (this *SemanticAnalysisV2) visitWhileStatement(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeWhileStatement.Name() {
 		return UnKnownType{}
 	}
-	condition := node.(WhileStatement).Condition
+	condition := node.(parser.WhileStatement).Condition
 	var conditionType AllType
 	switch condition.Type() {
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		conditionType = this.visitBinaryExpression(condition)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		conditionType, _, _ = this.visitIdentifier(condition)
-	case AstTypeBooleanLiteral.Name():
+	case parser.AstTypeBooleanLiteral.Name():
 		conditionType = this.visitBooleanLiteral(condition)
 	default:
-		logError("not support while statement condition type", conditionType)
+		utils.LogError("not support while statement condition type", conditionType)
 		return UnKnownType{}
 	}
 
 	booleanTypeName := BooleanType{}.ValueType()
 	if conditionType.ValueType() != booleanTypeName {
-		logError("while condition type error", conditionType)
+		utils.LogError("while condition type error", conditionType)
 		return UnKnownType{}
 	}
 
-	body := node.(WhileStatement).Body
-	if body.Type() == AstTypeBlockStatement.Name() {
+	body := node.(parser.WhileStatement).Body
+	if body.Type() == parser.AstTypeBlockStatement.Name() {
 		this.visitBlockStatement(body)
 	}
 
 	return VoidType{}
 }
 
-func (this *SemanticAnalysisV2) visitForStatement(node Node) AllType {
-	if node.Type() != AstTypeForStatement.Name() {
+func (this *SemanticAnalysisV2) visitForStatement(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeForStatement.Name() {
 		return UnKnownType{}
 	} // 开始新的作用域
 
@@ -627,88 +632,88 @@ func (this *SemanticAnalysisV2) visitForStatement(node Node) AllType {
 		this.CurrentScope = this.CurrentScope.Parent
 	}()
 
-	init := node.(ForStatement).Init
+	init := node.(parser.ForStatement).Init
 	var initType AllType
 	initType = UnKnownType{}
 	switch init.Type() {
-	case AstTypeVariableDeclaration.Name():
+	case parser.AstTypeVariableDeclaration.Name():
 		this.visitVariableDeclaration(init)
-	case AstTypeAssignmentExpression.Name():
+	case parser.AstTypeAssignmentExpression.Name():
 		this.visitAssignmentExpression(init)
-	case AstTypeBooleanLiteral.Name():
+	case parser.AstTypeBooleanLiteral.Name():
 		initType = this.visitBooleanLiteral(init)
 	default:
-		logError("not support for statement init type", init)
+		utils.LogError("not support for statement init type", init)
 		return UnKnownType{}
 	}
-	logInfo("for init type", initType)
+	utils.LogInfo("for init type", initType)
 
-	testExp := node.(ForStatement).Test
+	testExp := node.(parser.ForStatement).Test
 	var testType AllType
 	testType = UnKnownType{}
 	switch testExp.Type() {
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		testType = this.visitBinaryExpression(testExp)
 	default:
-		logError("not support for statement test type", testExp)
+		utils.LogError("not support for statement test type", testExp)
 		return UnKnownType{}
 	}
-	logInfo("for testType type", testType)
+	utils.LogInfo("for testType type", testType)
 
-	update := node.(ForStatement).Update
+	update := node.(parser.ForStatement).Update
 	var updateType AllType
 	updateType = UnKnownType{}
 	switch update.Type() {
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		testType = this.visitBinaryExpression(update)
 	default:
-		logError("not support for statement update type", update)
+		utils.LogError("not support for statement update type", update)
 		return UnKnownType{}
 	}
-	logInfo("for updateType type", updateType)
+	utils.LogInfo("for updateType type", updateType)
 
-	body := node.(ForStatement).Body
-	if body.Type() == AstTypeBlockStatement.Name() {
+	body := node.(parser.ForStatement).Body
+	if body.Type() == parser.AstTypeBlockStatement.Name() {
 		this.visitBlockStatement(body)
 	}
 
 	return VoidType{}
 }
 
-func (this *SemanticAnalysisV2) visitIfStatement(node Node) AllType {
-	if node.Type() == AstTypeIfStatement.Name() {
+func (this *SemanticAnalysisV2) visitIfStatement(node parser.Node) AllType {
+	if node.Type() == parser.AstTypeIfStatement.Name() {
 		return UnKnownType{}
 	}
-	condition := node.(IfStatement).Condition
+	condition := node.(parser.IfStatement).Condition
 	var conditionType AllType
 	conditionType = UnKnownType{}
 	switch condition.Type() {
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		conditionType = this.visitBinaryExpression(condition)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		conditionType, _, _ = this.visitIdentifier(condition)
-	case AstTypeBooleanLiteral.Name():
+	case parser.AstTypeBooleanLiteral.Name():
 		conditionType = this.visitBooleanLiteral(condition)
 	default:
-		logError("not support if statement condition type", conditionType)
+		utils.LogError("not support if statement condition type", conditionType)
 		return UnKnownType{}
 	}
-	logInfo("if condition type", conditionType)
+	utils.LogInfo("if condition type", conditionType)
 
 	bValueType := BooleanType{}.ValueType()
 	if conditionType.ValueType() != bValueType {
-		logError("if condition type error", conditionType)
+		utils.LogError("if condition type error", conditionType)
 		return UnKnownType{}
 	}
 
-	consequent := node.(IfStatement).Consequent
-	if consequent.Type() == AstTypeBlockStatement.Name() {
+	consequent := node.(parser.IfStatement).Consequent
+	if consequent.Type() == parser.AstTypeBlockStatement.Name() {
 		this.visitBlockStatement(consequent)
 	}
 
-	alternate := node.(IfStatement).Alternate
+	alternate := node.(parser.IfStatement).Alternate
 	if alternate != nil {
-		if alternate.Type() == AstTypeBlockStatement.Name() {
+		if alternate.Type() == parser.AstTypeBlockStatement.Name() {
 			this.visitBlockStatement(alternate)
 		}
 	}
@@ -717,7 +722,7 @@ func (this *SemanticAnalysisV2) visitIfStatement(node Node) AllType {
 }
 
 // block
-func (this *SemanticAnalysisV2) visitBlockStatement(node Node) AllType {
+func (this *SemanticAnalysisV2) visitBlockStatement(node parser.Node) AllType {
 	// 开始新的作用域
 	// 进入 block 就是一个新的作用域
 	funcScope := NewScopeV2()
@@ -726,58 +731,58 @@ func (this *SemanticAnalysisV2) visitBlockStatement(node Node) AllType {
 
 	// 防止中途退出作用域没返回
 	defer func() {
-		logInfo("visitBlockStatement after current Scope", this.CurrentScope)
+		utils.LogInfo("visitBlockStatement after current Scope", this.CurrentScope)
 		this.CurrentScope = this.CurrentScope.Parent
 	}()
 
 	// 默认函数返回都是 null
 	var retValueType AllType
 	retValueType = UnKnownType{}
-	logInfo("visitBlockStatement visit node before", node.Type())
-	for _, item := range node.(BlockStatement).Body {
-		logInfo("visitBlockStatement visit item", item.Type())
+	utils.LogInfo("visitBlockStatement visit node before", node.Type())
+	for _, item := range node.(parser.BlockStatement).Body {
+		utils.LogInfo("visitBlockStatement visit item", item.Type())
 		switch item.Type() {
 		// 变量定义
-		case AstTypeVariableDeclaration.Name():
+		case parser.AstTypeVariableDeclaration.Name():
 			this.visitVariableDeclaration(item)
 		// 赋值
-		case AstTypeAssignmentExpression.Name():
+		case parser.AstTypeAssignmentExpression.Name():
 			this.visitAssignmentExpression(item)
 		// for 循环 break
-		case AstTypeBreakStatement.Name():
+		case parser.AstTypeBreakStatement.Name():
 			this.visitBreakStatement(item)
 		// for 循环 continue
-		case AstTypeContinueStatement.Name():
+		case parser.AstTypeContinueStatement.Name():
 			this.visitContinueStatement(item)
 		// return
-		case AstTypeReturnStatement.Name():
+		case parser.AstTypeReturnStatement.Name():
 			retValueType = this.visitReturnStatement(item)
 		// 函数调用
-		case AstTypeCallExpression.Name():
+		case parser.AstTypeCallExpression.Name():
 			this.visitCallExpression(item)
 		default:
-			logError("not support block statement type", item)
+			utils.LogError("not support block statement type", item)
 		}
 	}
-	logInfo("visitBlockStatement before current Scope", retValueType)
+	utils.LogInfo("visitBlockStatement before current Scope", retValueType)
 	this.CurrentScope.LogNowScope()
 	return retValueType
 }
 
 // break
-func (this *SemanticAnalysisV2) visitBreakStatement(node Node) AllType {
+func (this *SemanticAnalysisV2) visitBreakStatement(node parser.Node) AllType {
 	return VoidType{}
 }
 
-func (this *SemanticAnalysisV2) visitContinueStatement(node Node) AllType {
+func (this *SemanticAnalysisV2) visitContinueStatement(node parser.Node) AllType {
 	return VoidType{}
 }
 
-func (this *SemanticAnalysisV2) visitReturnStatement(node Node) AllType {
-	if node.Type() != AstTypeReturnStatement.Name() {
+func (this *SemanticAnalysisV2) visitReturnStatement(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeReturnStatement.Name() {
 		return UnKnownType{}
 	}
-	v := node.(ReturnStatement).Value
+	v := node.(parser.ReturnStatement).Value
 	if v == nil {
 		return VoidType{}
 	}
@@ -785,66 +790,66 @@ func (this *SemanticAnalysisV2) visitReturnStatement(node Node) AllType {
 	var rightType AllType
 	rightType = VoidType{}
 	switch v.Type() {
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		rightType = this.visitBinaryExpression(v)
-	case AstTypeNumberLiteral.Name():
+	case parser.AstTypeNumberLiteral.Name():
 		rightType = this.visitNumberLiteral(v)
-	case AstTypeNullLiteral.Name():
+	case parser.AstTypeNullLiteral.Name():
 		rightType = this.visitNullLiteral(v)
-	case AstTypeBooleanLiteral.Name():
+	case parser.AstTypeBooleanLiteral.Name():
 		rightType = this.visitBooleanLiteral(v)
-	case AstTypeStringLiteral.Name():
+	case parser.AstTypeStringLiteral.Name():
 		rightType, _ = this.visitStringLiteral(v)
-	case AstTypeArrayLiteral.Name():
+	case parser.AstTypeArrayLiteral.Name():
 		rightType = this.visitArrayLiteral(v)
-	case AstTypeUnaryExpression.Name():
+	case parser.AstTypeUnaryExpression.Name():
 		rightType = this.visitUnaryExpression(v)
-	case AstTypeDictLiteral.Name():
+	case parser.AstTypeDictLiteral.Name():
 		rightType = this.visitDictLiteral(v)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		var varName string
 		_, varName, _ = this.visitIdentifier(v)
 		symbol, ok := this.CurrentScope.LookupSignature(varName)
 		if ok {
 			rightType = symbol.ReturnType
 		} else {
-			logError("undeclared variable", varName)
+			utils.LogError("undeclared variable", varName)
 			return UnKnownType{}
 		}
 	default:
-		logError("not support return value type", v.Type())
+		utils.LogError("not support return value type", v.Type())
 		return UnKnownType{}
 	}
-	logInfo("rightType", rightType)
+	utils.LogInfo("rightType", rightType)
 	return rightType
 }
 
 // array
-func (this *SemanticAnalysisV2) visitArrayLiteral(node Node) AllType {
-	if node.Type() != AstTypeArrayLiteral.Name() {
+func (this *SemanticAnalysisV2) visitArrayLiteral(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeArrayLiteral.Name() {
 		return VoidType{}
 	}
 	// 做一下限制，不能多种类型混合在数组里面一起
-	if len(node.(ArrayLiteral).Values) > 0 {
-		firstElement := node.(ArrayLiteral).Values[0]
+	if len(node.(parser.ArrayLiteral).Values) > 0 {
+		firstElement := node.(parser.ArrayLiteral).Values[0]
 		var firstElementType AllType
 		checkType := firstElement.Type()
 		switch checkType {
-		case AstTypeStringLiteral.Name():
+		case parser.AstTypeStringLiteral.Name():
 			firstElementType, _ = this.visitStringLiteral(firstElement)
-		case AstTypeNullLiteral.Name():
+		case parser.AstTypeNullLiteral.Name():
 			firstElementType = this.visitNumberLiteral(firstElement)
-		case AstTypeBooleanLiteral.Name():
+		case parser.AstTypeBooleanLiteral.Name():
 			firstElementType = this.visitBooleanLiteral(firstElement)
-		case AstTypeNumberLiteral.Name():
+		case parser.AstTypeNumberLiteral.Name():
 			firstElementType = this.visitNumberLiteral(firstElement)
 		default:
-			logError("array literal type error", checkType, node.(ArrayLiteral).Values[0].Type())
+			utils.LogError("array literal type error", checkType, node.(parser.ArrayLiteral).Values[0].Type())
 		}
 		// 数组
-		for _, item := range node.(ArrayLiteral).Values {
+		for _, item := range node.(parser.ArrayLiteral).Values {
 			if item.Type() != checkType {
-				logError("array literal type error", checkType, item.Type())
+				utils.LogError("array literal type error", checkType, item.Type())
 				return VoidType{}
 			}
 		}
@@ -857,29 +862,29 @@ func (this *SemanticAnalysisV2) visitArrayLiteral(node Node) AllType {
 }
 
 // dict
-func (this *SemanticAnalysisV2) visitDictLiteral(node Node) AllType {
-	if node.Type() != AstTypeDictLiteral.Name() {
+func (this *SemanticAnalysisV2) visitDictLiteral(node parser.Node) AllType {
+	if node.Type() != parser.AstTypeDictLiteral.Name() {
 		return VoidType{}
 	}
 	// 做一下限制，不能多种类型混合在dict
 	// key 也不能重复
-	if len(node.(DictLiteral).Values) <= 0 {
+	if len(node.(parser.DictLiteral).Values) <= 0 {
 		return DictType{
 			KeyType: VoidType{},
 			VType:   VoidType{},
 		}
 	}
 	keyNames := []string{}
-	firstVType, _ := this.visitPropertyAssignment(node.(DictLiteral).Values[0])
-	for _, value := range node.(DictLiteral).Values {
+	firstVType, _ := this.visitPropertyAssignment(node.(parser.DictLiteral).Values[0])
+	for _, value := range node.(parser.DictLiteral).Values {
 		dictVType, keyName := this.visitPropertyAssignment(value)
 		if dictVType != firstVType {
-			logError("dict literal value type not the same error", firstVType, dictVType)
+			utils.LogError("dict literal value type not the same error", firstVType, dictVType)
 			return VoidType{}
 		}
-		inSlice := InStringSlice(keyNames, keyName)
+		inSlice := utils.InStringSlice(keyNames, keyName)
 		if inSlice {
-			logError("dict literal duplicate key", keyName)
+			utils.LogError("dict literal duplicate key", keyName)
 			return VoidType{}
 		}
 		keyNames = append(keyNames, keyName)
@@ -891,55 +896,55 @@ func (this *SemanticAnalysisV2) visitDictLiteral(node Node) AllType {
 }
 
 // k:v
-func (this *SemanticAnalysisV2) visitPropertyAssignment(node Node) (vType AllType, keyName string) {
-	if node.Type() != AstTypePropertyAssignment.Name() {
+func (this *SemanticAnalysisV2) visitPropertyAssignment(node parser.Node) (vType AllType, keyName string) {
+	if node.Type() != parser.AstTypePropertyAssignment.Name() {
 		return VoidType{}, ""
 	}
-	_, keyName = this.visitStringLiteral(node.(PropertyAssignment).Key)
+	_, keyName = this.visitStringLiteral(node.(parser.PropertyAssignment).Key)
 
-	v := node.(PropertyAssignment).Value
+	v := node.(parser.PropertyAssignment).Value
 	switch v.Type() {
 	// todo
-	case AstTypeFunctionExpression.Name():
+	case parser.AstTypeFunctionExpression.Name():
 		vType = this.visitFunctionExpression(v)
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		vType = this.visitBinaryExpression(v)
-	case AstTypeNumberLiteral.Name():
+	case parser.AstTypeNumberLiteral.Name():
 		vType = this.visitNumberLiteral(v)
-	case AstTypeNullLiteral.Name():
+	case parser.AstTypeNullLiteral.Name():
 		vType = this.visitNullLiteral(v)
-	case AstTypeStringLiteral.Name():
+	case parser.AstTypeStringLiteral.Name():
 		vType, _ = this.visitStringLiteral(v)
-	case AstTypeArrayLiteral.Name():
+	case parser.AstTypeArrayLiteral.Name():
 		vType = this.visitArrayLiteral(v)
-	case AstTypeDictLiteral.Name():
+	case parser.AstTypeDictLiteral.Name():
 		vType = this.visitDictLiteral(v)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		var varName string
 		_, varName, _ = this.visitIdentifier(v)
 		symbol, ok := this.CurrentScope.LookupSignature(varName)
 		if ok {
 			vType = symbol.ReturnType
 		} else {
-			logError("undeclared variable", varName)
+			utils.LogError("undeclared variable", varName)
 			return
 		}
 	default:
-		logError("property assignment type error", v.Type(), node.Type())
+		utils.LogError("property assignment type error", v.Type(), node.Type())
 	}
 	return vType, keyName
 }
 
 // 调用函数
-func (this *SemanticAnalysisV2) visitCallExpression(node Node) (AllType, string) {
-	if node.Type() != AstTypeCallExpression.Name() {
+func (this *SemanticAnalysisV2) visitCallExpression(node parser.Node) (AllType, string) {
+	if node.Type() != parser.AstTypeCallExpression.Name() {
 		return UnKnownType{}, ""
 	}
-	if node.(CallExpression).Object.Type() == AstTypeMemberExpression.Name() {
-		return this.visitMemberExpression(node.(CallExpression).Object)
-	} else if node.(CallExpression).Object.Type() == AstTypeIdentifier.Name() {
+	if node.(parser.CallExpression).Object.Type() == parser.AstTypeMemberExpression.Name() {
+		return this.visitMemberExpression(node.(parser.CallExpression).Object)
+	} else if node.(parser.CallExpression).Object.Type() == parser.AstTypeIdentifier.Name() {
 
-		valueType, variableName, _ := this.visitIdentifier(node.(CallExpression).Object)
+		valueType, variableName, _ := this.visitIdentifier(node.(parser.CallExpression).Object)
 		// 如果是函数就是直接调用它返回值
 		functionValueType := FunctionType{}
 		if valueType.ValueType() == functionValueType.ValueType() {
@@ -947,37 +952,37 @@ func (this *SemanticAnalysisV2) visitCallExpression(node Node) (AllType, string)
 		}
 		return valueType, variableName
 	}
-	logInfo("visitCallExpression", node.(CallExpression).Object.Type())
+	utils.LogInfo("visitCallExpression", node.(parser.CallExpression).Object.Type())
 	return UnKnownType{}, ""
 }
 
 // Todo array dot 语法 [] .
 // 这里写的有点乱，要看看怎么搞比较好
-func (this *SemanticAnalysisV2) visitMemberExpression(node Node) (AllType, string) {
+func (this *SemanticAnalysisV2) visitMemberExpression(node parser.Node) (AllType, string) {
 	var variableName string
-	if node.Type() != AstTypeMemberExpression.Name() {
+	if node.Type() != parser.AstTypeMemberExpression.Name() {
 		return UnKnownType{}, ""
 	}
-	et := node.(MemberExpression).ElementType
+	et := node.(parser.MemberExpression).ElementType
 	switch et {
 	case "dot":
 		//logInfo("visitMemberExpression node.(before)", node.(MemberExpression))
 		var memberName string
 		var memberType AllType
-		memberType, memberName, _ = this.visitIdentifier(node.(MemberExpression).Object)
+		memberType, memberName, _ = this.visitIdentifier(node.(parser.MemberExpression).Object)
 		// 有可能是 this、cls 这类，也有可能是实例化的名字
-		if memberName == TokenTypeCls.Name() || memberName == TokenTypeThis.Name() {
+		if memberName == lexer.TokenTypeCls.Name() || memberName == lexer.TokenTypeThis.Name() {
 			var variableType AllType
-			variableType, variableName, _ = this.visitIdentifier(node.(MemberExpression).Property)
+			variableType, variableName, _ = this.visitIdentifier(node.(parser.MemberExpression).Property)
 			return variableType, variableName
 		} else {
 			// 1.处理.new()
 			var variableValueType AllType
 			var propertyName string
-			variableValueType, propertyName, _ = this.visitIdentifier(node.(MemberExpression).Property)
-			logInfo("visitMemberExpression variableName", variableValueType, variableName)
-			if propertyName == TokenTypeNew.Name() {
-				variableValueType, _, _ = this.visitIdentifier(node.(MemberExpression).Object)
+			variableValueType, propertyName, _ = this.visitIdentifier(node.(parser.MemberExpression).Property)
+			utils.LogInfo("visitMemberExpression variableName", variableValueType, variableName)
+			if propertyName == lexer.TokenTypeNew.Name() {
+				variableValueType, _, _ = this.visitIdentifier(node.(parser.MemberExpression).Object)
 				return InstanceType{
 					ClassType: ClassType{
 						MemberSignatures: variableValueType.(ClassType).MemberSignatures,
@@ -1003,13 +1008,13 @@ func (this *SemanticAnalysisV2) visitMemberExpression(node Node) (AllType, strin
 	return UnKnownType{}, ""
 }
 
-func (this *SemanticAnalysisV2) visitClassExpression(node Node) AllType {
+func (this *SemanticAnalysisV2) visitClassExpression(node parser.Node) AllType {
 	// 1.检查 super 的 class 是否存在
-	if node.Type() != AstTypeClassExpression.Name() {
+	if node.Type() != parser.AstTypeClassExpression.Name() {
 		return UnKnownType{}
 	}
 
-	classNameExp := node.(ClassExpression).Name
+	classNameExp := node.(parser.ClassExpression).Name
 	var className string
 	var classType AllType
 	classType, className, _ = this.visitIdentifier(classNameExp)
@@ -1020,7 +1025,7 @@ func (this *SemanticAnalysisV2) visitClassExpression(node Node) AllType {
 		return UnKnownType{}
 	}
 
-	superClass := node.(ClassExpression).SuperClass
+	superClass := node.(parser.ClassExpression).SuperClass
 	superClassName := ""
 	var superClassType AllType
 	// 1.检查 super 的 class 是否存在
@@ -1029,7 +1034,7 @@ func (this *SemanticAnalysisV2) visitClassExpression(node Node) AllType {
 
 		// 表示现在找不到这个类
 		if superClassType.ValueType() == UnKnownClassType.ValueType() {
-			logError("super class not found", superClassName)
+			utils.LogError("super class not found", superClassName)
 			return UnKnownType{}
 		}
 	}
@@ -1040,10 +1045,10 @@ func (this *SemanticAnalysisV2) visitClassExpression(node Node) AllType {
 	this.CurrentScope = funcScope
 
 	// 现在开始处理这个类
-	classBody := node.(ClassExpression).Body
+	classBody := node.(parser.ClassExpression).Body
 	memberSignatures := make([]Signature, 0)
-	logInfo("visitClassExpression classBody", classBody.Type())
-	if classBody.Type() == AstTypeClassBodyStatement.Name() {
+	utils.LogInfo("visitClassExpression classBody", classBody.Type())
+	if classBody.Type() == parser.AstTypeClassBodyStatement.Name() {
 		memberSignatures = this.visitClassBodyStatement(classBody)
 	}
 	thisClassType := ClassType{
@@ -1059,87 +1064,87 @@ func (this *SemanticAnalysisV2) visitClassExpression(node Node) AllType {
 	return thisClassType
 }
 
-func (this *SemanticAnalysisV2) visitClassBodyStatement(node Node) []Signature {
-	if node.Type() != AstTypeClassBodyStatement.Name() {
+func (this *SemanticAnalysisV2) visitClassBodyStatement(node parser.Node) []Signature {
+	if node.Type() != parser.AstTypeClassBodyStatement.Name() {
 		return nil
 	}
 	signatures := make([]Signature, 0)
-	for _, item := range node.(ClassBodyStatement).Body {
-		logInfo("visitClassBodyStatement visit item", item.Type())
+	for _, item := range node.(parser.ClassBodyStatement).Body {
+		utils.LogInfo("visitClassBodyStatement visit item", item.Type())
 		switch item.Type() {
-		case AstTypeClassVariableDeclaration.Name():
+		case parser.AstTypeClassVariableDeclaration.Name():
 			signature := this.visitClassVariableDeclaration(item)
 			signatures = append(signatures, signature)
 		default:
-			logError("unknown class body statement", item.Type())
+			utils.LogError("unknown class body statement", item.Type())
 		}
 	}
 	ifHasNewFunc := false
 	for _, signature := range signatures {
-		if signature.Name == TokenTypeNew.Name() {
+		if signature.Name == lexer.TokenTypeNew.Name() {
 			ifHasNewFunc = true
 			break
 		}
 	}
 	if !ifHasNewFunc {
-		logError("class init has not new func", node.Type())
+		utils.LogError("class init has not new func", node.Type())
 		return nil
 	}
 	return signatures
 }
 
-func (this *SemanticAnalysisV2) visitClassVariableDeclaration(node Node) Signature {
+func (this *SemanticAnalysisV2) visitClassVariableDeclaration(node parser.Node) Signature {
 	//type visitClassVariableDeclaration struct {
 	//	Kind  string // kind属性
 	//	Name  Node   // name属性
 	//	Value Node   // value属性
 	//}
-	left := node.(ClassVariableDeclaration).Name
+	left := node.(parser.ClassVariableDeclaration).Name
 	var variableName string
 	switch left.Type() {
-	case AstTypeMemberExpression.Name():
+	case parser.AstTypeMemberExpression.Name():
 		_, variableName = this.visitMemberExpression(left)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		_, variableName, _ = this.visitIdentifier(left)
 	default:
-		logError("invalid class variable declaration", left)
+		utils.LogError("invalid class variable declaration", left)
 		return Signature{}
 	}
 
 	var valueType AllType
-	right := node.(ClassVariableDeclaration).Value
+	right := node.(parser.ClassVariableDeclaration).Value
 	switch right.Type() {
 	// 访问函数
-	case AstTypeFunctionExpression.Name():
+	case parser.AstTypeFunctionExpression.Name():
 		valueType = this.visitFunctionExpression(right)
-	case AstTypeBinaryExpression.Name():
+	case parser.AstTypeBinaryExpression.Name():
 		valueType = this.visitBinaryExpression(right)
-	case AstTypeNumberLiteral.Name():
+	case parser.AstTypeNumberLiteral.Name():
 		valueType = this.visitNumberLiteral(right)
-	case AstTypeNullLiteral.Name():
+	case parser.AstTypeNullLiteral.Name():
 		valueType = this.visitNullLiteral(right)
-	case AstTypeBooleanLiteral.Name():
+	case parser.AstTypeBooleanLiteral.Name():
 		valueType = this.visitBooleanLiteral(right)
-	case AstTypeStringLiteral.Name():
+	case parser.AstTypeStringLiteral.Name():
 		valueType, _ = this.visitStringLiteral(right)
-	case AstTypeArrayLiteral.Name():
+	case parser.AstTypeArrayLiteral.Name():
 		valueType = this.visitArrayLiteral(right)
-	case AstTypeUnaryExpression.Name():
+	case parser.AstTypeUnaryExpression.Name():
 		valueType = this.visitUnaryExpression(right)
-	case AstTypeDictLiteral.Name():
+	case parser.AstTypeDictLiteral.Name():
 		valueType = this.visitDictLiteral(right)
-	case AstTypeIdentifier.Name():
+	case parser.AstTypeIdentifier.Name():
 		var varName string
 		_, varName, _ = this.visitIdentifier(right)
 		symbol, ok := this.CurrentScope.LookupSignature(varName)
 		if ok {
 			valueType = symbol.ReturnType
 		} else {
-			logError("undeclared variable", varName)
+			utils.LogError("undeclared variable", varName)
 			return Signature{}
 		}
 	default:
-		logError("invalid class variable declaration", right)
+		utils.LogError("invalid class variable declaration", right)
 		return Signature{}
 	}
 	// 先这么写 false

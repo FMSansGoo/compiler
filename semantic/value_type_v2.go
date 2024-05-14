@@ -1,4 +1,4 @@
-package main
+package semantic
 
 type AllType interface {
 	ValueType() string

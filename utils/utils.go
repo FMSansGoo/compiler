@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func logInfo(msg string, args ...interface{}) {
+func LogInfo(msg string, args ...interface{}) {
 	str := fmt.Sprintf("[INFO] %s", msg)
 	if len(args) > 0 {
 		params := make([]string, 0, len(args))
@@ -20,7 +20,7 @@ func logInfo(msg string, args ...interface{}) {
 	fmt.Println(str)
 }
 
-func logError(msg string, args ...interface{}) {
+func LogError(msg string, args ...interface{}) {
 	str := fmt.Sprintf("[ERROR] %s", msg)
 	if len(args) > 0 {
 		params := make([]string, 0, len(args))

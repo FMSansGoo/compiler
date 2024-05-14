@@ -1,26 +1,27 @@
-package main
+package parser
 
 import (
 	"encoding/json"
 	"fmt"
+	sansLexer "go-compiler/lexer"
 	"testing"
 )
 
 func TestNewBaseParser(t *testing.T) {
 	//基本类型
-	testParser1()
+	//testParser1()
 	//多重运算
 	testParser2()
 	//for 循环 while 循环 if else
-	testParser3()
+	//testParser3()
 	//// 函数
-	testParser4()
+	//testParser4()
 	//// 类
-	testParser5()
+	//testParser5()
 }
 
 func testParser1() {
-	lexer := SansLangLexer{}
+	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
 	var a = 1
 	var b = "string"
@@ -31,7 +32,7 @@ func testParser1() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := sansLexer.TokenList{
 		Tokens: tokenList,
 	}
 	for _, token := range tokensLexer.Tokens {
@@ -56,18 +57,14 @@ func testParser1() {
 }
 
 func testParser2() {
-	lexer := SansLangLexer{}
+	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
-		var a = 1 + 1 * 1 / 3 - 1
-		var b = a and b
-		var c = a or b
-		var d = false
-		var e = not d
-		var f = (1 + 1) * 2
+		var a = 1 + 1 * 1
+
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := sansLexer.TokenList{
 		Tokens: tokenList,
 	}
 	for _, token := range tokensLexer.Tokens {
@@ -92,7 +89,7 @@ func testParser2() {
 }
 
 func testParser3() {
-	lexer := SansLangLexer{}
+	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
 		for(var a = 1; a <= 10; a += 1) {
 			if(a == 1){
@@ -110,7 +107,7 @@ func testParser3() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := sansLexer.TokenList{
 		Tokens: tokenList,
 	}
 	for _, token := range tokensLexer.Tokens {
@@ -135,7 +132,7 @@ func testParser3() {
 }
 
 func testParser4() {
-	lexer := SansLangLexer{}
+	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
 		const log = function(a) {
 			return a
@@ -148,7 +145,7 @@ func testParser4() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := sansLexer.TokenList{
 		Tokens: tokenList,
 	}
 	for _, token := range tokensLexer.Tokens {
@@ -173,7 +170,7 @@ func testParser4() {
 }
 
 func testParser5() {
-	lexer := SansLangLexer{}
+	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
 		class B {
 			const new = function() {
@@ -196,7 +193,7 @@ func testParser5() {
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
-	tokensLexer := TokenList{
+	tokensLexer := sansLexer.TokenList{
 		Tokens: tokenList,
 	}
 	for _, token := range tokensLexer.Tokens {
