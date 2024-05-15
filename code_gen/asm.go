@@ -161,10 +161,10 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		switch left.Type() {
 		case parser.AstTypeBinaryExpression.Name():
 			leftAsm += this.visitBinaryExpression(left)
-			leftAsm += "set a3 a1\n"
 		case parser.AstTypeNumberLiteral.Name():
 			num := this.visitNumberLiteral(left)
 			leftAsm += fmt.Sprintf("set2 a1 %v\n", num)
+			leftAsm += "push a1\n"
 		default:
 			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return ""
@@ -176,10 +176,10 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		switch right.Type() {
 		case parser.AstTypeBinaryExpression.Name():
 			rightAsm += this.visitBinaryExpression(right)
-			rightAsm += "set a3 a2\n"
 		case parser.AstTypeNumberLiteral.Name():
 			num := this.visitNumberLiteral(right)
-			rightAsm += fmt.Sprintf("set2 a2 %v\n", num)
+			rightAsm += fmt.Sprintf("set2 a1 %v\n", num)
+			rightAsm += "push a1\n"
 		default:
 			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return ""
@@ -187,7 +187,10 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		//a = 1 + 1
 		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
 		asm += fmt.Sprintf("%v %v\n", leftAsm, rightAsm)
+		asm += fmt.Sprintf("pop a2\n")
+		asm += fmt.Sprintf("pop a1\n")
 		asm += fmt.Sprintf("add a1 a2 a3\n")
+		asm += fmt.Sprintf("push a3\n")
 		return asm
 	case "*":
 
@@ -198,10 +201,10 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		switch left.Type() {
 		case parser.AstTypeBinaryExpression.Name():
 			leftAsm += this.visitBinaryExpression(left)
-			leftAsm += "set a3 a1\n"
 		case parser.AstTypeNumberLiteral.Name():
 			num := this.visitNumberLiteral(left)
 			leftAsm += fmt.Sprintf("set2 a1 %v\n", num)
+			leftAsm += "push a1\n"
 		default:
 			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
 			return ""
@@ -213,18 +216,21 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		switch right.Type() {
 		case parser.AstTypeBinaryExpression.Name():
 			rightAsm += this.visitBinaryExpression(right)
-			rightAsm += "set a3 a2\n"
 		case parser.AstTypeNumberLiteral.Name():
 			num := this.visitNumberLiteral(right)
-			rightAsm += fmt.Sprintf("set2 a2 %v\n", num)
+			rightAsm += fmt.Sprintf("set2 a1 %v\n", num)
+			rightAsm += "push a1\n"
 		default:
 			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
 			return ""
 		}
-		//a = 1 + 1
+		//a = 1 * 1
 		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
 		asm += fmt.Sprintf("%v %v\n", leftAsm, rightAsm)
+		asm += fmt.Sprintf("pop a2\n")
+		asm += fmt.Sprintf("pop a1\n")
 		asm += fmt.Sprintf("multiply2 a1 a2 a3\n")
+		asm += fmt.Sprintf("push a3\n")
 		return asm
 	default:
 		utils.LogError("visitBinaryExpression invalid operator", node.(parser.BinaryExpression).Operator)
