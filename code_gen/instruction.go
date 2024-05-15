@@ -16,7 +16,7 @@ import "fmt"
 //9	load2	从16位内存地址加载值到寄存器
 //10	add2	与add类似,但操作数为16位
 //11	save2	将寄存器值保存到16位内存地址
-//12	subtract2	16位减法
+//12	sub2	16位减法
 //13	load_from_register	从一寄存器指定的8位内存地址加载值到另一寄存器
 //14	load_from_register2	与load_from_register类似,但加载的是16位值
 //15	save_from_register2	将16位寄存器值保存到另一寄存器指定的16位内存地址
@@ -24,6 +24,8 @@ import "fmt"
 //17	shift_right	对一个寄存器值执行逻辑右移
 //19	and	对两个寄存器值执行位与操作
 //20	multiply2	将两个16位寄存器值相乘
+//21    push reg 把数据推到栈上，栈指针 + 2
+//22    pop reg 把数据从栈上退出来，栈指针 - 2
 // Instruction
 
 type Instruction struct {
@@ -47,7 +49,7 @@ var (
 	InstructionLoad2             = newInstruction("load2", 9)
 	InstructionAdd2              = newInstruction("add2", 10)
 	InstructionSave2             = newInstruction("save2", 11)
-	InstructionSubtract2         = newInstruction("subtract2", 12)
+	InstructionSubtract2         = newInstruction("sub2", 12)
 	InstructionLoadFromRegister  = newInstruction("load_from_register", 13)
 	InstructionLoadFromRegister2 = newInstruction("load_from_register2", 14)
 	InstructionSaveFromRegister2 = newInstruction("save_from_register2", 15)
@@ -55,6 +57,8 @@ var (
 	InstructionShiftRight        = newInstruction("shift_right", 17)
 	InstructionAnd               = newInstruction("and", 19)
 	InstructionMultiply2         = newInstruction("multiply2", 20)
+	InstructionPush              = newInstruction("push", 20)
+	InstructionPop               = newInstruction("pop", 20)
 )
 
 func newInstruction(name string, value int64) Instruction {
