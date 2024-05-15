@@ -186,7 +186,7 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		}
 		//a = 1 + 1
 		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
-		asm += fmt.Sprintf("%v %v\n", leftAsm, rightAsm)
+		asm += fmt.Sprintf("%v%v\n", leftAsm, rightAsm)
 		asm += fmt.Sprintf("pop a2\n")
 		asm += fmt.Sprintf("pop a1\n")
 		asm += fmt.Sprintf("add a1 a2 a3\n")
@@ -226,7 +226,7 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		}
 		//a = 1 * 1
 		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
-		asm += fmt.Sprintf("%v %v\n", leftAsm, rightAsm)
+		asm += fmt.Sprintf("%v%v\n", leftAsm, rightAsm)
 		asm += fmt.Sprintf("pop a2\n")
 		asm += fmt.Sprintf("pop a1\n")
 		asm += fmt.Sprintf("multiply2 a1 a2 a3\n")

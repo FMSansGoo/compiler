@@ -18,7 +18,7 @@ func testCodeGenerator1() {
 	// todo 这是错的
 	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
-	var a = 1 + 2 * 3
+	var a = 2 * 3 + 1 * 4
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
