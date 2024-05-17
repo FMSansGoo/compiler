@@ -13,14 +13,14 @@ func TestCodeGenerator(t *testing.T) {
 	//testCodeGenerator1_1()
 	//testCodeGenerator1_2()
 	//testCodeGenerator1_3()
-	testCodeGenerator1_4()
+	//testCodeGenerator1_4()
 }
 
 func testCodeGenerator1_1() {
 	// 基本类型
 	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
-	var a = 1
+	1 + 1
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
@@ -61,7 +61,7 @@ func testCodeGenerator1_2() {
 	// 基本类型
 	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
-	var a = 1 + 1
+	1 + 1 * 1
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
@@ -143,7 +143,9 @@ func testCodeGenerator1_4() {
 	// 基本类型
 	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
-	var a = 1 + 2 * 3 - 4
+	var a = 1 
+	var b = 2
+	a = 3 + b
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

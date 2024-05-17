@@ -9,6 +9,7 @@ import (
 type CodeGenerator struct {
 	Asm         string         `json:"asm"`
 	Ast         parser.Program `json:"program_ast"`
+	Register    *Register      `json:"register"`
 	StackOffset int64          `json:"stack_offset"`
 	SymbolTable *SymbolTable
 }
@@ -16,8 +17,8 @@ type CodeGenerator struct {
 func NewCodeGenerator(programAst parser.Program) *CodeGenerator {
 	c := &CodeGenerator{
 		Ast:         programAst,
-		Asm:         "",
 		SymbolTable: NewSymbolTable(),
+		Register:    NewRegister(),
 		StackOffset: 3,
 	}
 	c.InitAsm()
@@ -25,7 +26,7 @@ func NewCodeGenerator(programAst parser.Program) *CodeGenerator {
 }
 
 func (this *CodeGenerator) InitAsm() {
-	initAsm := "; 栈是前1024字节\njump @1024\n.memory 1024\nset2 f1 3\n"
+	initAsm := ""
 	this.Asm += initAsm
 	return
 }
@@ -34,47 +35,201 @@ func (this *CodeGenerator) Visit() {
 	if this.Ast.Type() != parser.AstTypeProgram.Name() {
 		return
 	}
-	this.visitProgram(this.Ast.Body)
+	this.Asm += this.visit(this.Ast)
 }
 
-func (this *CodeGenerator) visitProgram(body []parser.Node) {
-	for _, item := range body {
-		utils.LogInfo("visitProgram visit item", item.Type())
-		switch item.Type() {
-		// 变量定义
-		case parser.AstTypeVariableDeclaration.Name():
-			this.visitVariableDeclaration(item)
-		default:
-			utils.LogError("visitProgram visit item default", item.Type())
-		}
+func (this *CodeGenerator) visit(node parser.Node) string {
+	var asm string
+	switch node.Type() {
+	case parser.AstTypeProgram.Name():
+		asm = this.visitProgram(node)
+	// 表达式
+	case parser.AstTypeBinaryExpression.Name():
+		asm = this.visitBinaryExpression(node)
+	// 赋值
+	case parser.AstTypeAssignmentExpression.Name():
+		asm = this.visitAssignmentExpression(node)
+	// 变量定义
+	case parser.AstTypeVariableDeclaration.Name():
+		asm = this.visitVariableDeclaration(node)
+	// 字面量
+	case parser.AstTypeNullLiteral.Name():
+		fallthrough
+	case parser.AstTypeStringLiteral.Name():
+		fallthrough
+	case parser.AstTypeBooleanLiteral.Name():
+		fallthrough
+	case parser.AstTypeNumberLiteral.Name():
+		asm = this.visitLiteral(node)
+	// 变量名
+	case parser.AstTypeIdentifier.Name():
+		asm = this.visitIdentifier(node)
+	default:
+		utils.LogError("visitProgram visit item default", node.Type())
+		return ""
 	}
+
+	return asm
 }
 
-func (this *CodeGenerator) visitVariableDeclaration(node parser.Node) {
-	//var a = 1
-	//var b = 2
-	//这种就是栈上
-	//搞个表，记录变量对应的栈上位置
-	//然后把栈上变量读到寄存器上，再操作寄存器
+func (this *CodeGenerator) visitProgram(node parser.Node) string {
+	if node.Type() != parser.AstTypeProgram.Name() {
+		return ""
+	}
 
-	//比如
-	//a 在 stack[0]
-	//b在 stack[1]
-	//
-	//那 a+b 可以编译成
-	//load_from_stack @0 a1
-	//load_from_stack @1 a2
-	//add a1 a2 a3
+	body := node.(parser.Program).Body
+	asm := ""
+	for _, item := range body {
+		asm += this.visit(item)
+	}
+	return asm
+}
 
-	//赋值也是一样的
+// 表达式
+func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
+	if node.Type() != parser.AstTypeBinaryExpression.Name() {
+		return ""
+	}
+	// op
+	switch node.(parser.BinaryExpression).Operator {
+	case "+":
+		// left
+		left := node.(parser.BinaryExpression).Left
+		leftAsm := this.visit(left)
+
+		// right
+		right := node.(parser.BinaryExpression).Right
+		rightAsm := this.visit(right)
+		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
+
+		// 退出来寄存器
+		rightReg := this.Register.ReturnRegPop()
+		leftReg := this.Register.ReturnRegPop()
+		// 暂存结果寄存器
+		resultReg := this.Register.ReturnRegAlloc()
+
+		return leftAsm + rightAsm + "add2 " + leftReg + " " + rightReg + " " + resultReg + "\n"
+	case "-":
+		// left
+		left := node.(parser.BinaryExpression).Left
+		leftAsm := this.visit(left)
+
+		// right
+		right := node.(parser.BinaryExpression).Right
+		rightAsm := this.visit(right)
+		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
+
+		// 退出来寄存器
+		rightReg := this.Register.ReturnRegPop()
+		leftReg := this.Register.ReturnRegPop()
+		// 暂存结果寄存器
+		resultReg := this.Register.ReturnRegAlloc()
+
+		return leftAsm + rightAsm + "sub2 " + leftReg + " " + rightReg + " " + resultReg + "\n"
+	case "*":
+		// left
+		left := node.(parser.BinaryExpression).Left
+		leftAsm := this.visit(left)
+
+		// right
+		right := node.(parser.BinaryExpression).Right
+		rightAsm := this.visit(right)
+		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
+
+		// 退出来寄存器
+		rightReg := this.Register.ReturnRegPop()
+		leftReg := this.Register.ReturnRegPop()
+		// 暂存结果寄存器
+		resultReg := this.Register.ReturnRegAlloc()
+
+		return leftAsm + rightAsm + "mul2 " + leftReg + " " + rightReg + " " + resultReg + "\n"
+	case "/":
+		// left
+		left := node.(parser.BinaryExpression).Left
+		leftAsm := this.visit(left)
+
+		// right
+		right := node.(parser.BinaryExpression).Right
+		rightAsm := this.visit(right)
+		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
+
+		// 退出来寄存器
+		rightReg := this.Register.ReturnRegPop()
+		leftReg := this.Register.ReturnRegPop()
+		// 暂存结果寄存器
+		resultReg := this.Register.ReturnRegAlloc()
+
+		return leftAsm + rightAsm + "div2 " + leftReg + " " + rightReg + " " + resultReg + "\n"
+	case "and":
+		// left
+		left := node.(parser.BinaryExpression).Left
+		leftAsm := this.visit(left)
+
+		// right
+		right := node.(parser.BinaryExpression).Right
+		rightAsm := this.visit(right)
+		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
+
+		// 退出来寄存器
+		rightReg := this.Register.ReturnRegPop()
+		leftReg := this.Register.ReturnRegPop()
+		// 暂存结果寄存器
+		resultReg := this.Register.ReturnRegAlloc()
+
+		return leftAsm + rightAsm + "bool_and " + leftReg + " " + rightReg + " " + resultReg + "\n"
+	case "or":
+		// left
+		left := node.(parser.BinaryExpression).Left
+		leftAsm := this.visit(left)
+
+		// right
+		right := node.(parser.BinaryExpression).Right
+		rightAsm := this.visit(right)
+		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
+
+		// 退出来寄存器
+		rightReg := this.Register.ReturnRegPop()
+		leftReg := this.Register.ReturnRegPop()
+		// 暂存结果寄存器
+		resultReg := this.Register.ReturnRegAlloc()
+
+		return leftAsm + rightAsm + "bool_or " + leftReg + " " + rightReg + " " + resultReg + "\n"
+	default:
+		utils.LogError("visitBinaryExpression invalid operator", node.(parser.BinaryExpression).Operator)
+	}
+	return ""
+}
+
+func (this *CodeGenerator) visitLiteral(node parser.Node) string {
+	value := ""
+	switch node.Type() {
+	case parser.AstTypeNullLiteral.Name():
+		value = "null"
+	case parser.AstTypeStringLiteral.Name():
+		value = node.(parser.StringLiteral).Value
+	case parser.AstTypeNumberLiteral.Name():
+		value = fmt.Sprintf("%v", node.(parser.NumberLiteral).Value)
+	case parser.AstTypeBooleanLiteral.Name():
+		value = fmt.Sprintf("%v", node.(parser.BooleanLiteral).Value)
+	default:
+		utils.LogError("visitLiteral invalid type", node.Type())
+		return ""
+	}
+	return fmt.Sprintf("set2 %v %v\n", this.Register.ReturnRegAlloc(), value)
+}
+
+func (this *CodeGenerator) visitVariableDeclaration(node parser.Node) string {
+	if node.Type() != parser.AstTypeVariableDeclaration.Name() {
+		return ""
+	}
 
 	left := node.(parser.VariableDeclaration).Name
 	switch left.Type() {
 	case parser.AstTypeIdentifier.Name():
-		this.visitIdentifier(left)
+		this.visit(left)
 	default:
 		utils.LogError("visitVariableDeclaration invalid left variable declaration", left)
-		return
+		return ""
 	}
 
 	// 做一下限制，变量名不为空
@@ -82,271 +237,70 @@ func (this *CodeGenerator) visitVariableDeclaration(node parser.Node) {
 	variableName := name.(parser.Identifier).Value
 	if len(variableName) == 0 {
 		utils.LogError("visitVariableDeclaration invalid left variable declaration", left)
-		return
+		return ""
 	}
 
 	right := node.(parser.VariableDeclaration).Value
+	rightAsm := this.visit(right)
 
-	var subAsm string
-	// 初始化 asm
-	subAsm = "set2 a3 0\n"
-	var numberValue string
-	switch right.Type() {
-	// 访问表达式
-	case parser.AstTypeBinaryExpression.Name():
-		asm := this.visitBinaryExpression(right)
-		subAsm += this.setVariableAsm(asm, "register")
-	// 访问函数，函数的返回类型
-	case parser.AstTypeNumberLiteral.Name():
-		numberValue = this.visitNumberLiteral(right)
-		subAsm += this.setVariableAsm(numberValue, "number")
+	// 退出来寄存器
+	asm := rightAsm + "push2 " + this.Register.ReturnRegPop() + "\n"
+	return asm
+}
+
+func (this *CodeGenerator) visitAssignmentExpression(node parser.Node) string {
+	if node.Type() != parser.AstTypeAssignmentExpression.Name() {
+		return ""
+	}
+	var leftAsm string
+	left := node.(parser.AssignmentExpression).Left
+	switch left.Type() {
+	case parser.AstTypeIdentifier.Name():
+		leftAsm = this.visit(left)
 	default:
-		utils.LogError("visitVariableDeclaration invalid right variable declaration", right)
-		return
-	}
-
-	this.StackOffset += 2
-	// 这里的 address 不能写死
-	this.SymbolTable.AddVariableInfo(variableName, this.StackOffset, true)
-	this.Asm += subAsm
-	return
-}
-
-func (this *CodeGenerator) setVariableAsm(value string, valueType string) (code string) {
-	//; 在 f1 所在地址存放值，存放后移动 f1
-	//set2 a1 {}
-	//save_from_register2 a1 f1
-	//; f1 += 2
-	//set2 a3 2
-	//add2 f1 a3 f1
-	code = fmt.Sprintf("; 在 f1 所在地址存放值，存放后移动 f1\n")
-	if valueType == "number" {
-		code += fmt.Sprintf("set2 a3 %v\n", value)
-	} else if valueType == "register" {
-		code += value
-	}
-	code += fmt.Sprintf("save_from_register2 a3 f1\n")
-	code += fmt.Sprintf("; f1 += 2\n")
-	code += fmt.Sprintf("set2 a1 2\n")
-	code += fmt.Sprintf("add2 f1 a1 f1\n")
-	return
-}
-
-// 表达式
-func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
-	// BinaryExpression节点结构
-	//type BinaryExpression struct {
-	//	Operator string // operator属性
-	//	Left     Node   // left属性
-	//	Right    Node   // right属性
-	//}
-	if node.Type() != parser.AstTypeBinaryExpression.Name() {
+		utils.LogError("visitAssignmentExpression invalid left variable declaration", left)
 		return ""
 	}
-	// op
-	switch node.(parser.BinaryExpression).Operator {
-	case "+":
-		asm := ""
-		leftAsm := ""
-		// 这里接受多个类型
-		left := node.(parser.BinaryExpression).Left
-		switch left.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			leftAsm += this.visitBinaryExpression(left)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(left)
-			leftAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			leftAsm += "push a1\n"
-		default:
-			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
-			return ""
-		}
 
-		// right
-		right := node.(parser.BinaryExpression).Right
-		rightAsm := ""
-		switch right.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			rightAsm += this.visitBinaryExpression(right)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(right)
-			rightAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			rightAsm += "push a1\n"
-		default:
-			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
-			return ""
-		}
-		//a = 1 + 1
-		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
-		asm += fmt.Sprintf("%v%v\n", leftAsm, rightAsm)
-		asm += fmt.Sprintf("pop a2\n")
-		asm += fmt.Sprintf("pop a1\n")
-		asm += fmt.Sprintf("add2 a1 a2 a3\n")
-		asm += fmt.Sprintf("push a3\n")
-		return asm
-	case "-":
-		asm := ""
-		leftAsm := ""
-		// 这里接受多个类型
-		left := node.(parser.BinaryExpression).Left
-		switch left.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			leftAsm += this.visitBinaryExpression(left)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(left)
-			leftAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			leftAsm += "push a1\n"
-		default:
-			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
-			return ""
-		}
-
-		// right
-		right := node.(parser.BinaryExpression).Right
-		rightAsm := ""
-		switch right.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			rightAsm += this.visitBinaryExpression(right)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(right)
-			rightAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			rightAsm += "push a1\n"
-		default:
-			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
-			return ""
-		}
-		//a = 1 + 1
-		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
-		asm += fmt.Sprintf("%v%v\n", leftAsm, rightAsm)
-		asm += fmt.Sprintf("pop a2\n")
-		asm += fmt.Sprintf("pop a1\n")
-		asm += fmt.Sprintf("sub2 a1 a2 a3\n")
-		asm += fmt.Sprintf("push a3\n")
-		return asm
-	case "*":
-		asm := ""
-		leftAsm := ""
-		// 这里接受多个类型
-		left := node.(parser.BinaryExpression).Left
-		switch left.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			leftAsm += this.visitBinaryExpression(left)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(left)
-			leftAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			leftAsm += "push a1\n"
-		default:
-			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
-			return ""
-		}
-
-		// right
-		right := node.(parser.BinaryExpression).Right
-		rightAsm := ""
-		switch right.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			rightAsm += this.visitBinaryExpression(right)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(right)
-			rightAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			rightAsm += "push a1\n"
-		default:
-			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
-			return ""
-		}
-		//a = 1 * 1
-		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
-		asm += fmt.Sprintf("%v%v\n", leftAsm, rightAsm)
-		asm += fmt.Sprintf("pop a2\n")
-		asm += fmt.Sprintf("pop a1\n")
-		asm += fmt.Sprintf("multiply2 a1 a2 a3\n")
-		asm += fmt.Sprintf("push a3\n")
-		return asm
-	case "/":
-		asm := ""
-		leftAsm := ""
-		// left
-		left := node.(parser.BinaryExpression).Left
-		switch left.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			leftAsm += this.visitBinaryExpression(left)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(left)
-			leftAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			leftAsm += "push a1\n"
-		default:
-			utils.LogError("左值类型错误", node.(parser.BinaryExpression).Left)
-			return ""
-		}
-
-		// right
-		right := node.(parser.BinaryExpression).Right
-		rightAsm := ""
-		switch right.Type() {
-		case parser.AstTypeBinaryExpression.Name():
-			rightAsm += this.visitBinaryExpression(right)
-		case parser.AstTypeNumberLiteral.Name():
-			num := this.visitNumberLiteral(right)
-			rightAsm += fmt.Sprintf("set2 a1 %v\n", num)
-			rightAsm += "push a1\n"
-		default:
-			utils.LogError("右值类型错误", node.(parser.BinaryExpression).Right)
-			return ""
-		}
-		//a = 1 * 1
-		utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
-		asm += fmt.Sprintf("%v%v\n", leftAsm, rightAsm)
-		asm += fmt.Sprintf("pop a2\n")
-		asm += fmt.Sprintf("pop a1\n")
-		asm += fmt.Sprintf("div2 a1 a2 a3\n")
-		asm += fmt.Sprintf("push a3\n")
-		return asm
-
-	default:
-		utils.LogError("visitBinaryExpression invalid operator", node.(parser.BinaryExpression).Operator)
-	}
-	return ""
-}
-
-func (this *CodeGenerator) visitNullLiteral(node parser.Node) string {
-	if node.Type() != parser.AstTypeNullLiteral.Name() {
+	// 做一下限制，变量名不为空
+	name := node.(parser.AssignmentExpression).Left
+	variableName := name.(parser.Identifier).Value
+	if len(variableName) == 0 {
+		utils.LogError("visitAssignmentExpression invalid left variable declaration", left)
 		return ""
 	}
-	return fmt.Sprintf("%v", "null")
-}
-
-func (this *CodeGenerator) visitStringLiteral(node parser.Node) string {
-	if node.Type() != parser.AstTypeStringLiteral.Name() {
+	variable, ok := this.SymbolTable.LookupVariableInfo(variableName)
+	if !ok {
+		utils.LogError("visitAssignmentExpression invalid left variableName", variable)
 		return ""
 	}
-	return fmt.Sprintf("%v", node.(parser.StringLiteral).Value)
-}
-
-func (this *CodeGenerator) visitBooleanLiteral(node parser.Node) string {
-	if node.Type() != parser.AstTypeBooleanLiteral.Name() {
-		return ""
+	var asm string
+	// 拿到变量的栈指针，设置数值到变量的栈上
+	if variable.Address > 0 {
+		asm += "set2 f1 " + fmt.Sprintf("%v", variable.Address) + "\n"
 	}
-	return fmt.Sprintf("%v", node.(parser.BooleanLiteral).Value)
+	right := node.(parser.AssignmentExpression).Right
+	rightAsm := this.visit(right)
+	asm = leftAsm + rightAsm + asm + "save_from_register2 " + this.Register.ReturnRegPop() + " f1\n"
+	return asm
 }
 
-func (this *CodeGenerator) visitNumberLiteral(node parser.Node) string {
-	if node.Type() != parser.AstTypeNumberLiteral.Name() {
-		return ""
-	}
-	utils.LogInfo("visitNumberLiteral", node.(parser.NumberLiteral))
-	return fmt.Sprintf("%v", node.(parser.NumberLiteral).Value)
-}
-
-func (this *CodeGenerator) visitIdentifier(node parser.Node) (variableInfo VariableInfo, ok bool) {
+func (this *CodeGenerator) visitIdentifier(node parser.Node) string {
 	if node.Type() != parser.AstTypeIdentifier.Name() {
-		return VariableInfo{}, false
+		return ""
+	}
+	variableName := node.(parser.Identifier).Value
+	varInfo, ok := this.SymbolTable.LookupVariableInfo(variableName)
+	if !ok {
+		this.StackOffset += 2
+		this.SymbolTable.AddVariableInfo(variableName, this.StackOffset, true)
+		return ""
 	}
 
-	variableInfo, ok = this.SymbolTable.LookupVariableInfo(node.(parser.Identifier).Value)
-	if ok {
-		return variableInfo, false
-	}
-	return VariableInfo{
-		Name: node.(parser.Identifier).Value,
-	}, false
+	var asm string
+	// 将数据从栈上拿出来
+	offset := varInfo.Address
+	asm = "set2 f1 " + fmt.Sprintf("%v", offset) + "\n"
+	asm += "load_from_register2 " + "f1 " + this.Register.ReturnRegAlloc() + "\n"
+	return asm
 }

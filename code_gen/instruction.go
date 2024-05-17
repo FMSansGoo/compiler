@@ -22,7 +22,7 @@ import "fmt"
 //15	save_from_register2	将16位寄存器值保存到另一寄存器指定的16位内存地址
 //16	jump_from_register	跳转到一个寄存器指定的内存地址
 //17	shift_right	对一个寄存器值执行逻辑右移
-//19	and	对两个寄存器值执行位与操作
+//19	bitAnd	对两个寄存器值执行位与操作
 //20	multiply2	将两个16位寄存器值相乘
 //21    push reg 把数据推到栈上，栈指针 + 2
 //22    pop reg 把数据从栈上退出来，栈指针 - 2
@@ -55,10 +55,13 @@ var (
 	InstructionSaveFromRegister2 = newInstruction("save_from_register2", 15)
 	InstructionJumpFromRegister  = newInstruction("jump_from_register", 16)
 	InstructionShiftRight        = newInstruction("shift_right", 17)
-	InstructionAnd               = newInstruction("and", 19)
-	InstructionMultiply2         = newInstruction("multiply2", 20)
-	InstructionPush              = newInstruction("push", 20)
-	InstructionPop               = newInstruction("pop", 20)
+	InstructionBitAnd            = newInstruction("bit_and", 19)
+	InstructionMultiply2         = newInstruction("mul2", 20)
+	InstructionDiv2              = newInstruction("div2", 21)
+	InstructionPush              = newInstruction("push", 22)
+	InstructionPop               = newInstruction("pop", 23)
+	InstructionBoolAnd           = newInstruction("bool_and", 23)
+	InstructionBoolOr            = newInstruction("bool_or", 23)
 )
 
 func newInstruction(name string, value int64) Instruction {
