@@ -162,8 +162,8 @@ func (ue UnaryExpression) Type() string {
 
 // 调用的结点
 type CallExpression struct {
-	Object Node   `json:"object"` // object 属性
 	Args   []Node `json:"args"`   // Args 属性
+	Object Node   `json:"object"` // object 属性
 }
 
 func (ce CallExpression) Type() string {

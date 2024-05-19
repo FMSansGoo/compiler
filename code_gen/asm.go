@@ -6,6 +6,11 @@ import (
 	"go-compiler/utils"
 )
 
+type FunctionInfo struct {
+	Name      string `json:"name"`
+	RetOffset int64  `json:"ret_offset"`
+}
+
 type CodeGenerator struct {
 	Asm         string         `json:"asm"`
 	Ast         parser.Program `json:"program_ast"`
@@ -17,18 +22,23 @@ type CodeGenerator struct {
 	ElseCounter  int64 `json:"else_counter"`
 	WhileCounter int64 `json:"while_counter"`
 	ForCounter   int64 `json:"for_counter"`
+	// function
+	FunctionInfo   map[string]*FunctionInfo `json:"function_info"`
+	FunctionOffset int64                    `json:"function_offset"`
 }
 
 func NewCodeGenerator(programAst parser.Program) *CodeGenerator {
 	c := &CodeGenerator{
-		Ast:          programAst,
-		SymbolTable:  NewSymbolTable(),
-		Register:     NewRegister(),
-		StackOffset:  3,
-		IfCounter:    1,
-		ElseCounter:  1,
-		WhileCounter: 1,
-		ForCounter:   1,
+		Ast:            programAst,
+		SymbolTable:    NewSymbolTable(),
+		Register:       NewRegister(),
+		StackOffset:    3,
+		IfCounter:      1,
+		ElseCounter:    1,
+		WhileCounter:   1,
+		ForCounter:     1,
+		FunctionInfo:   make(map[string]*FunctionInfo, 0),
+		FunctionOffset: 2,
 	}
 	c.InitAsm()
 	return c
@@ -44,6 +54,7 @@ func (this *CodeGenerator) Visit() {
 	if this.Ast.Type() != parser.AstTypeProgram.Name() {
 		return
 	}
+
 	this.Asm += this.visit(this.Ast)
 }
 
@@ -52,6 +63,12 @@ func (this *CodeGenerator) visit(node parser.Node) string {
 	switch node.Type() {
 	case parser.AstTypeProgram.Name():
 		asm = this.visitProgram(node)
+	// call func
+	case parser.AstTypeCallExpression.Name():
+		asm = this.visitCallExpression(node)
+	// return
+	case parser.AstTypeReturnStatement.Name():
+		asm = this.visitReturnStatement(node)
 	// block
 	case parser.AstTypeBlockStatement.Name():
 		asm = this.visitBlockStatement(node)
@@ -67,6 +84,9 @@ func (this *CodeGenerator) visit(node parser.Node) string {
 	//数组
 	case parser.AstTypeArrayLiteral.Name():
 		asm = this.visitArrayLiteral(node)
+	// function
+	case parser.AstTypeFunctionExpression.Name():
+		asm = this.visitFunctionExpression(node)
 	// 一元表达式
 	case parser.AstTypeUnaryExpression.Name():
 		asm = this.visitUnaryExpression(node)
@@ -95,6 +115,31 @@ func (this *CodeGenerator) visit(node parser.Node) string {
 		utils.LogError("visitProgram visit item default", node.Type())
 		return ""
 	}
+
+	return asm
+}
+
+func (this *CodeGenerator) visitCallExpression(node parser.Node) string {
+	if node.Type() != parser.AstTypeCallExpression.Name() {
+		return ""
+	}
+
+	var asm string
+
+	object := node.(parser.CallExpression).Object
+	var funcName string
+	if object.Type() == parser.AstTypeIdentifier.Name() {
+		funcName = this.visitRawLiteralValue(object)
+		asm += fmt.Sprintf(".call @%s ", funcName)
+	}
+
+	args := node.(parser.CallExpression).Args
+	argsValue := ""
+	for _, arg := range args {
+		v := this.visitRawLiteralValue(arg)
+		argsValue += v + " "
+	}
+	asm += argsValue + "\n"
 
 	return asm
 }
@@ -186,6 +231,18 @@ func (this *CodeGenerator) visitBlockStatement(node parser.Node) string {
 	for _, item := range body {
 		asm += this.visit(item)
 	}
+	return asm
+}
+
+func (this *CodeGenerator) visitReturnStatement(node parser.Node) string {
+	if node.Type() != parser.AstTypeReturnStatement.Name() {
+		return ""
+	}
+	value := node.(parser.ReturnStatement).Value
+
+	var asm string
+	rawValue := this.visitRawLiteralValue(value)
+	asm += fmt.Sprintf(".return %v\n", rawValue)
 	return asm
 }
 
@@ -314,7 +371,7 @@ func (this *CodeGenerator) visitArrayLiteral(node parser.Node) string {
 	arrayValues := node.(parser.ArrayLiteral).Values
 	var vs []any
 	for _, v := range arrayValues {
-		vs = append(vs, this.visitArrayLiteralValue(v))
+		vs = append(vs, this.visitRawLiteralValue(v))
 	}
 	for _, v := range vs {
 		// 设置一个寄存器数值，然后 push 进去
@@ -324,6 +381,29 @@ func (this *CodeGenerator) visitArrayLiteral(node parser.Node) string {
 	}
 	// 最后塞一个数组的数据量
 	asm += fmt.Sprintf("set2 %v %v\n", this.Register.ReturnRegAlloc(), len(arrayValues))
+	return asm
+}
+
+func (this *CodeGenerator) visitFunctionExpression(node parser.Node) string {
+	if node.Type() != parser.AstTypeFunctionExpression.Name() {
+		return ""
+	}
+	var asm string
+
+	params := node.(parser.FunctionExpression).Params
+	for _, v := range params {
+		if v.Type() == parser.AstTypeIdentifier.Name() {
+			//             ; f1 += 2
+			//            set2 a3 2
+			//            add2 f1 a3 f1
+			asm += fmt.Sprintf(".func_var %v\n", this.visitRawLiteralValue(v))
+			this.StackOffset += 2
+		}
+	}
+
+	body := node.(parser.FunctionExpression).Body
+	asm += this.visit(body)
+
 	return asm
 }
 
@@ -349,6 +429,25 @@ func (this *CodeGenerator) visitVariableDeclaration(node parser.Node) string {
 	if node.Type() != parser.AstTypeVariableDeclaration.Name() {
 		return ""
 	}
+	var asm string
+	// 做一下限制，变量名不为空
+	name := node.(parser.VariableDeclaration).Name
+	variableName := name.(parser.Identifier).Value
+	if len(variableName) == 0 {
+		utils.LogError("visitVariableDeclaration invalid left variable declaration", variableName)
+		return ""
+	}
+
+	// 检测一下右边的表达式是不是函数，是的话走另外的逻辑
+	right := node.(parser.VariableDeclaration).Value
+	if right.Type() == parser.AstTypeFunctionExpression.Name() {
+		asm = fmt.Sprintf(".function @%v\n", variableName)
+
+		this.FunctionInfo[variableName] = &FunctionInfo{RetOffset: this.FunctionOffset, Name: variableName}
+		asm += this.visitFunctionExpression(right)
+		this.FunctionOffset += 2
+		return asm
+	}
 
 	left := node.(parser.VariableDeclaration).Name
 	switch left.Type() {
@@ -359,19 +458,12 @@ func (this *CodeGenerator) visitVariableDeclaration(node parser.Node) string {
 		return ""
 	}
 
-	// 做一下限制，变量名不为空
-	name := node.(parser.VariableDeclaration).Name
-	variableName := name.(parser.Identifier).Value
-	if len(variableName) == 0 {
-		utils.LogError("visitVariableDeclaration invalid left variable declaration", left)
-		return ""
-	}
-
-	right := node.(parser.VariableDeclaration).Value
-	rightAsm := this.visit(right)
+	var rightAsm string
+	right = node.(parser.VariableDeclaration).Value
+	rightAsm = this.visit(right)
 
 	// 退出来寄存器
-	asm := rightAsm + "push " + this.Register.ReturnRegPop() + "\n"
+	asm = rightAsm + "push " + this.Register.ReturnRegPop() + "\n"
 	return asm
 }
 
@@ -432,7 +524,7 @@ func (this *CodeGenerator) visitIdentifier(node parser.Node) string {
 	return asm
 }
 
-func (this *CodeGenerator) visitArrayLiteralValue(node parser.Node) string {
+func (this *CodeGenerator) visitRawLiteralValue(node parser.Node) string {
 	value := ""
 	switch node.Type() {
 	case parser.AstTypeNullLiteral.Name():
@@ -443,6 +535,8 @@ func (this *CodeGenerator) visitArrayLiteralValue(node parser.Node) string {
 		value = fmt.Sprintf("%v", node.(parser.NumberLiteral).Value)
 	case parser.AstTypeBooleanLiteral.Name():
 		value = fmt.Sprintf("%v", node.(parser.BooleanLiteral).Value)
+	case parser.AstTypeIdentifier.Name():
+		value = fmt.Sprintf("%v", node.(parser.Identifier).Value)
 	default:
 		utils.LogError("visitLiteral invalid type", node.Type())
 		return ""

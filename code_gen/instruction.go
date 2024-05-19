@@ -73,6 +73,7 @@ var (
 	InstructionSubtractAssign        = newInstruction("num_sub_eq", 35)
 	InstructionMultiplyAssign        = newInstruction("num_mul_eq", 36)
 	InstructionDivideAssign          = newInstruction("num_div_eq", 37)
+	InstructionReturn                = newInstruction(".return", 38)
 
 	InstructionIf = newInstruction("if", 50)
 )
