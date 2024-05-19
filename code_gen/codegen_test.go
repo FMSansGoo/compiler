@@ -14,7 +14,11 @@ func TestCodeGenerator(t *testing.T) {
 	//testCodeGenerator1_2()
 	//testCodeGenerator1_3()
 	//testCodeGenerator1_4()
-	testCodeGenerator1_5()
+	//testCodeGenerator1_5()
+
+	// if else 完成
+	testCodeGenerator2_1()
+	testCodeGenerator2_2()
 }
 
 func testCodeGenerator1_1() {
@@ -220,6 +224,96 @@ func testCodeGenerator1_5() {
 	codeGen.Visit()
 	fmt.Printf("%v\n", codeGen.Asm)
 
+	fmt.Println("====================== asm_gen end =======================")
+
+}
+
+func testCodeGenerator2_1() {
+	// 基本类型
+	lexer := sansLexer.SansLangLexer{}
+	lexer.Code = `
+	if(false) {
+		1
+	} else if(false){
+		2
+	} else {
+		3
+	}
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := sansLexer.TokenList{
+		Tokens: tokenList,
+	}
+	for _, token := range tokensLexer.Tokens {
+		fmt.Printf("token %+v\n", token)
+	}
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := sansParser.NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	// 将节点转换为JSON字符串
+	jsonData, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Println("转换为JSON时出错:", err)
+		return
+	}
+
+	// 打印JSON字符串
+	fmt.Println(string(jsonData))
+	fmt.Println("====================== parser end =======================")
+	fmt.Println("====================== asm_gen init =======================")
+
+	//// 生成汇编代码
+	codeGen := NewCodeGenerator(ast)
+	codeGen.Visit()
+	fmt.Printf("%v\n", codeGen.Asm)
+	//
+	fmt.Println("====================== asm_gen end =======================")
+
+}
+
+func testCodeGenerator2_2() {
+	// 基本类型
+	lexer := sansLexer.SansLangLexer{}
+	lexer.Code = `
+while(true){
+	1
+}
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := sansLexer.TokenList{
+		Tokens: tokenList,
+	}
+	for _, token := range tokensLexer.Tokens {
+		fmt.Printf("token %+v\n", token)
+	}
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := sansParser.NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	// 将节点转换为JSON字符串
+	jsonData, err := json.MarshalIndent(ast, "", "    ")
+	if err != nil {
+		fmt.Println("转换为JSON时出错:", err)
+		return
+	}
+
+	// 打印JSON字符串
+	fmt.Println(string(jsonData))
+	fmt.Println("====================== parser end =======================")
+	fmt.Println("====================== asm_gen init =======================")
+
+	//// 生成汇编代码
+	codeGen := NewCodeGenerator(ast)
+	codeGen.Visit()
+	fmt.Printf("%v\n", codeGen.Asm)
+	//
 	fmt.Println("====================== asm_gen end =======================")
 
 }

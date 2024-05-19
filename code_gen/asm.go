@@ -7,19 +7,25 @@ import (
 )
 
 type CodeGenerator struct {
-	Asm         string         `json:"asm"`
-	Ast         parser.Program `json:"program_ast"`
-	Register    *Register      `json:"register"`
-	StackOffset int64          `json:"stack_offset"`
-	SymbolTable *SymbolTable
+	Asm          string         `json:"asm"`
+	Ast          parser.Program `json:"program_ast"`
+	Register     *Register      `json:"register"`
+	StackOffset  int64          `json:"stack_offset"`
+	SymbolTable  *SymbolTable
+	IfCounter    int64 `json:"if_counter"`
+	ElseCounter  int64 `json:"else_counter"`
+	WhileCounter int64 `json:"while_counter"`
 }
 
 func NewCodeGenerator(programAst parser.Program) *CodeGenerator {
 	c := &CodeGenerator{
-		Ast:         programAst,
-		SymbolTable: NewSymbolTable(),
-		Register:    NewRegister(),
-		StackOffset: 3,
+		Ast:          programAst,
+		SymbolTable:  NewSymbolTable(),
+		Register:     NewRegister(),
+		StackOffset:  3,
+		IfCounter:    1,
+		ElseCounter:  1,
+		WhileCounter: 1,
 	}
 	c.InitAsm()
 	return c
@@ -43,6 +49,15 @@ func (this *CodeGenerator) visit(node parser.Node) string {
 	switch node.Type() {
 	case parser.AstTypeProgram.Name():
 		asm = this.visitProgram(node)
+	// block
+	case parser.AstTypeBlockStatement.Name():
+		asm = this.visitBlockStatement(node)
+	//while
+	case parser.AstTypeWhileStatement.Name():
+		asm = this.visitWhileStatement(node)
+	// if
+	case parser.AstTypeIfStatement.Name():
+		asm = this.visitIfStatement(node)
 	//数组
 	case parser.AstTypeArrayLiteral.Name():
 		asm = this.visitArrayLiteral(node)
@@ -97,22 +112,22 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 		return ""
 	}
 	instructionMap := map[string]string{
-		"+":   "add2",
-		"-":   "sub2",
-		"*":   "mul2",
-		"/":   "div2",
-		"and": "bool_and",
-		"or":  "bool_or",
-		">=":  "bool_lget",
-		"<=":  "bool_sget",
-		"==":  "bool_eq",
-		"!=":  "bool_neq",
-		">":   "bool_gt",
-		"<":   "bool_st",
-		"+=":  "num_add_eq",
-		"-=":  "num_sub_eq",
-		"*=":  "num_mul_eq",
-		"/=":  "num_div_eq",
+		"+":   InstructionAdd2.Name(),
+		"-":   InstructionSubtract2.Name(),
+		"*":   InstructionMultiply2.Name(),
+		"/":   InstructionDiv2.Name(),
+		"and": InstructionBoolAnd.Name(),
+		"or":  InstructionBoolOr.Name(),
+		">=":  InstructionBoolGreaterThanEquals.Name(),
+		"<=":  InstructionBoolLessThanEquals.Name(),
+		"==":  InstructionBoolEquals.Name(),
+		"!=":  InstructionBoolNotEquals.Name(),
+		">":   InstructionBoolGreaterThan.Name(),
+		"<":   InstructionBoolLessThan.Name(),
+		"+=":  InstructionPlusAssign.Name(),
+		"-=":  InstructionSubtractAssign.Name(),
+		"*=":  InstructionMultiplyAssign.Name(),
+		"/=":  InstructionDivideAssign.Name(),
 	}
 	ins, ok := instructionMap[node.(parser.BinaryExpression).Operator]
 	if !ok {
@@ -153,6 +168,109 @@ func (this *CodeGenerator) visitUnaryExpression(node parser.Node) string {
 	resultReg := this.Register.ReturnRegAlloc()
 
 	return rightAsm + "bool_not " + " " + leftReg + " " + resultReg + "\n"
+}
+
+func (this *CodeGenerator) visitBlockStatement(node parser.Node) string {
+	if node.Type() != parser.AstTypeBlockStatement.Name() {
+		return ""
+	}
+	body := node.(parser.BlockStatement).Body
+
+	var asm string
+	for _, item := range body {
+		asm += this.visit(item)
+	}
+	return asm
+}
+
+func (this *CodeGenerator) visitWhileStatement(node parser.Node) string {
+	if node.Type() != parser.AstTypeWhileStatement.Name() {
+		return ""
+	}
+
+	// 先访问 condition
+	condition := node.(parser.WhileStatement).Condition
+
+	whileCounter := this.WhileCounter
+	var whilePreAsm string
+	whilePreAsm += fmt.Sprintf("@while_init_%v\n", whileCounter)
+	whilePreAsm += this.visit(condition)
+	whilePreAsm += fmt.Sprintf("while %v @while_block_%v\n", this.Register.ReturnRegPop(), whileCounter)
+	whilePreAsm += fmt.Sprintf("jump @while_end_%v\n", whileCounter)
+	whilePreAsm += fmt.Sprintf("@while_block_%v\n", whileCounter)
+	this.WhileCounter += 1
+
+	blockBody := node.(parser.WhileStatement).Body
+	blockAsm := this.visit(blockBody)
+
+	var asm string
+	asm += whilePreAsm
+	asm += blockAsm
+	asm += fmt.Sprintf("jump @while_init_%v\n", whileCounter)
+	asm += fmt.Sprintf("@while_end_%v\n", whileCounter)
+
+	return asm
+}
+
+func (this *CodeGenerator) visitIfStatement(node parser.Node) string {
+	//if a1 @xxx地址
+	// 其实你可以直接判断是否为 true
+	// 或者是否为 true 值
+
+	if node.Type() != parser.AstTypeIfStatement.Name() {
+		return ""
+	}
+
+	// 先访问 condition
+	condition := node.(parser.IfStatement).Condition
+	ifPreAsm := this.visit(condition)
+
+	var elseFlag bool
+	// 检测一下 else 是否为空
+	alternate := node.(parser.IfStatement).Alternate
+	if alternate != nil {
+		elseFlag = true
+	}
+
+	ifCounter := this.IfCounter
+	elseCounter := this.ElseCounter
+	ifPreAsm += fmt.Sprintf("if %v @if_block_%v\n", this.Register.ReturnRegPop(), ifCounter)
+	if elseFlag {
+		ifPreAsm += fmt.Sprintf("jump @else_block_%v\n", elseCounter)
+	}
+	ifPreAsm += fmt.Sprintf("@if_block_%v\n", ifCounter)
+
+	this.IfCounter += 1
+	consequent := node.(parser.IfStatement).Consequent
+	blockAsm := this.visit(consequent)
+	blockAsm += fmt.Sprintf("jump @if_block_end_%v\n", ifCounter)
+
+	var elseAsm string
+	if elseFlag {
+		elseAsm += fmt.Sprintf("@else_block_%v\n", elseCounter)
+		this.ElseCounter += 1
+		elseAsm += this.visit(alternate)
+	}
+
+	var asm string
+	asm += ifPreAsm
+	asm += blockAsm
+	asm += elseAsm
+	asm += fmt.Sprintf("@if_block_end_%v\n", ifCounter)
+
+	return asm
+}
+
+func (this *CodeGenerator) visitForStatement(node parser.Node) string {
+	//if a1 @xxx地址
+	// 其实你可以直接判断是否为 true
+	// 或者是否为 true 值
+	if node.Type() != parser.AstTypeForStatement.Name() {
+		return ""
+	}
+
+	var asm string
+	return asm
 }
 
 func (this *CodeGenerator) visitArrayLiteral(node parser.Node) string {
