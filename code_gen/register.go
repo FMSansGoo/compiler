@@ -32,7 +32,7 @@ func (this *Register) ReturnRegPop() string {
 	return s
 }
 
-func (this *Register) ReturnRegByName(name string) int {
+func (this *Register) ReturnRegByName(name string) int64 {
 	registerMap := map[string]int{
 		"a1": 0b00010000,
 		"a2": 0b00100000,
@@ -40,5 +40,5 @@ func (this *Register) ReturnRegByName(name string) int {
 		"c1": 0b01000000,
 		"f1": 0b01010000,
 	}
-	return registerMap[name]
+	return int64(registerMap[name])
 }

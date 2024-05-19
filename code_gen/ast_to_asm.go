@@ -192,7 +192,6 @@ func (this *CodeGenerator) visitBinaryExpression(node parser.Node) string {
 	// right
 	right := node.(parser.BinaryExpression).Right
 	rightAsm := this.visit(right)
-	utils.LogInfo("visitBinaryExpression", node.(parser.BinaryExpression).Left, node.(parser.BinaryExpression).Right)
 
 	// 退出来寄存器
 	rightReg := this.Register.ReturnRegPop()

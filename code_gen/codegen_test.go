@@ -10,7 +10,7 @@ import (
 
 func TestCodeGenerator(t *testing.T) {
 	// 基本类型
-	//testCodeGenerator1_1()
+	testCodeGenerator1_1()
 	//testCodeGenerator1_2()
 	//testCodeGenerator1_3()
 	//testCodeGenerator1_4()
@@ -24,7 +24,7 @@ func TestCodeGenerator(t *testing.T) {
 	//testCodeGenerator2_3()
 
 	// function
-	testCodeGenerator3_1()
+	//testCodeGenerator3_1()
 
 }
 
@@ -32,7 +32,7 @@ func testCodeGenerator1_1() {
 	// 基本类型
 	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
-	1 + 1
+	1
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
