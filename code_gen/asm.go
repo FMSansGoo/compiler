@@ -7,14 +7,16 @@ import (
 )
 
 type CodeGenerator struct {
-	Asm          string         `json:"asm"`
-	Ast          parser.Program `json:"program_ast"`
-	Register     *Register      `json:"register"`
-	StackOffset  int64          `json:"stack_offset"`
-	SymbolTable  *SymbolTable
+	Asm         string         `json:"asm"`
+	Ast         parser.Program `json:"program_ast"`
+	Register    *Register      `json:"register"`
+	StackOffset int64          `json:"stack_offset"`
+	SymbolTable *SymbolTable
+	// 计数器简单点做
 	IfCounter    int64 `json:"if_counter"`
 	ElseCounter  int64 `json:"else_counter"`
 	WhileCounter int64 `json:"while_counter"`
+	ForCounter   int64 `json:"for_counter"`
 }
 
 func NewCodeGenerator(programAst parser.Program) *CodeGenerator {
@@ -26,6 +28,7 @@ func NewCodeGenerator(programAst parser.Program) *CodeGenerator {
 		IfCounter:    1,
 		ElseCounter:  1,
 		WhileCounter: 1,
+		ForCounter:   1,
 	}
 	c.InitAsm()
 	return c
@@ -55,6 +58,9 @@ func (this *CodeGenerator) visit(node parser.Node) string {
 	//while
 	case parser.AstTypeWhileStatement.Name():
 		asm = this.visitWhileStatement(node)
+	//for
+	case parser.AstTypeForStatement.Name():
+		asm = this.visitForStatement(node)
 	// if
 	case parser.AstTypeIfStatement.Name():
 		asm = this.visitIfStatement(node)
@@ -183,35 +189,6 @@ func (this *CodeGenerator) visitBlockStatement(node parser.Node) string {
 	return asm
 }
 
-func (this *CodeGenerator) visitWhileStatement(node parser.Node) string {
-	if node.Type() != parser.AstTypeWhileStatement.Name() {
-		return ""
-	}
-
-	// 先访问 condition
-	condition := node.(parser.WhileStatement).Condition
-
-	whileCounter := this.WhileCounter
-	var whilePreAsm string
-	whilePreAsm += fmt.Sprintf("@while_init_%v\n", whileCounter)
-	whilePreAsm += this.visit(condition)
-	whilePreAsm += fmt.Sprintf("while %v @while_block_%v\n", this.Register.ReturnRegPop(), whileCounter)
-	whilePreAsm += fmt.Sprintf("jump @while_end_%v\n", whileCounter)
-	whilePreAsm += fmt.Sprintf("@while_block_%v\n", whileCounter)
-	this.WhileCounter += 1
-
-	blockBody := node.(parser.WhileStatement).Body
-	blockAsm := this.visit(blockBody)
-
-	var asm string
-	asm += whilePreAsm
-	asm += blockAsm
-	asm += fmt.Sprintf("jump @while_init_%v\n", whileCounter)
-	asm += fmt.Sprintf("@while_end_%v\n", whileCounter)
-
-	return asm
-}
-
 func (this *CodeGenerator) visitIfStatement(node parser.Node) string {
 	//if a1 @xxx地址
 	// 其实你可以直接判断是否为 true
@@ -261,15 +238,71 @@ func (this *CodeGenerator) visitIfStatement(node parser.Node) string {
 	return asm
 }
 
+func (this *CodeGenerator) visitWhileStatement(node parser.Node) string {
+	if node.Type() != parser.AstTypeWhileStatement.Name() {
+		return ""
+	}
+
+	// 先访问 condition
+	condition := node.(parser.WhileStatement).Condition
+
+	whileCounter := this.WhileCounter
+	var whilePreAsm string
+	whilePreAsm += fmt.Sprintf("@while_init_%v\n", whileCounter)
+	whilePreAsm += this.visit(condition)
+	whilePreAsm += fmt.Sprintf("while %v @while_block_%v\n", this.Register.ReturnRegPop(), whileCounter)
+	whilePreAsm += fmt.Sprintf("jump @while_end_%v\n", whileCounter)
+	whilePreAsm += fmt.Sprintf("@while_block_%v\n", whileCounter)
+	this.WhileCounter += 1
+
+	blockBody := node.(parser.WhileStatement).Body
+	blockAsm := this.visit(blockBody)
+
+	var asm string
+	asm += whilePreAsm
+	asm += blockAsm
+	asm += fmt.Sprintf("jump @while_init_%v\n", whileCounter)
+	asm += fmt.Sprintf("@while_end_%v\n", whileCounter)
+
+	return asm
+}
+
 func (this *CodeGenerator) visitForStatement(node parser.Node) string {
-	//if a1 @xxx地址
-	// 其实你可以直接判断是否为 true
-	// 或者是否为 true 值
 	if node.Type() != parser.AstTypeForStatement.Name() {
 		return ""
 	}
 
+	// 先访问 init
+	init := node.(parser.ForStatement).Init
+	initAsm := this.visit(init)
+
+	// 访问 test
+	test := node.(parser.ForStatement).Test
+	forCounter := this.ForCounter
+	testAsm := fmt.Sprintf("@for_init_%v\n", forCounter)
+	testAsm += this.visit(test)
+	testAsm += fmt.Sprintf("for %v @for_block_%v\n", this.Register.ReturnRegPop(), forCounter)
+	testAsm += fmt.Sprintf("jump @for_end_%v\n", forCounter)
+	testAsm += fmt.Sprintf("@for_block_%v\n", forCounter)
+	this.ForCounter += 1
+
+	// 访问 body
+	body := node.(parser.ForStatement).Body
+	bodyAsm := this.visit(body)
+
+	// 访问 update
+	update := node.(parser.ForStatement).Update
+	updateAsm := this.visit(update)
+
+	// 跟 while 循环一样，到终点要调回去
 	var asm string
+	asm += initAsm
+	asm += testAsm
+	asm += bodyAsm
+	asm += updateAsm
+	asm += fmt.Sprintf("jump @for_init_%v\n", forCounter)
+	asm += fmt.Sprintf("@for_end_%v\n", forCounter)
+
 	return asm
 }
 
