@@ -370,6 +370,11 @@ func testCodeGenerator2_3() {
 func testCodeGenerator3_1() {
 	// 基本类型
 	lexer := sansLexer.SansLangLexer{}
+	//.call @main 1 2
+	//.function @main
+	// .func_var a
+	// .func_var b
+	// .return 0
 	lexer.Code = `
 	// 调用函数在定义之前
 	main(1,2)
