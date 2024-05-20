@@ -42,17 +42,331 @@ func (this *Assembler) turnCodeToNum(code string) int64 {
 }
 
 func (this *Assembler) opSet2(code []string) {
+	// set a1 true
 	this.Pc += 3
 	reg1 := code[1]
 	r1 := this.Register.ReturnRegByName(reg1)
 	num := this.turnCodeToNum(code[2])
-	this.Memory = append(this.Memory, 0, r1, num)
+	this.Memory = append(this.Memory, InstructionSet2.Value(), r1, num)
+	this.CodeCount += 3
+}
+
+func (this *Assembler) opSub2(code []string) {
+	//sub2 a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionSubtract2.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opAdd2(code []string) {
+	//add2 a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionAdd2.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opMul2(code []string) {
+	//mul a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionMultiply2.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opDiv2(code []string) {
+	//div2 a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionDiv2.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opPush(code []string) {
+	//push reg
+	this.Pc += 2
+	reg1 := code[1]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+
+	this.Memory = append(this.Memory, InstructionPush.Value(), r1)
+	this.CodeCount += 2
+}
+
+func (this *Assembler) opPop(code []string) {
+	//pop reg
+	this.Pc += 2
+	reg1 := code[1]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+
+	this.Memory = append(this.Memory, InstructionPop.Value(), r1)
+	this.CodeCount += 2
+}
+
+func (this *Assembler) opBoolAnd(code []string) {
+	//bool_and a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolAnd.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opBoolOr(code []string) {
+	//bool_or a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolOr.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opBoolLessThan(code []string) {
+	//bool_lt a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolLessThan.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opBoolLessThanEquals(code []string) {
+	//bool_lte a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolLessThanEquals.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opBoolGreaterThan(code []string) {
+	//bool_gt a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolGreaterThan.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opBoolGreaterThanEquals(code []string) {
+	//bool_gte a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolGreaterThanEquals.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opBoolEquals(code []string) {
+	//bool_eq a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolEquals.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opBoolNotEquals(code []string) {
+	//bool_neq a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionBoolNotEquals.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opPlusAssign(code []string) {
+	//num_plus_eq a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionPlusAssign.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opSubtractAssign(code []string) {
+	//num_sub_eq a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionSubtractAssign.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opMultiplyAssign(code []string) {
+	//num_mul_eq a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionMultiplyAssign.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opDivideAssign(code []string) {
+	//num_div_eq a1 a2 a3
+	this.Pc += 4
+	reg1 := code[1]
+	reg2 := code[2]
+	reg3 := code[3]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+	r3 := this.Register.ReturnRegByName(reg3)
+
+	this.Memory = append(this.Memory, InstructionDivideAssign.Value(), r1, r2, r3)
+	this.CodeCount += 4
+}
+
+func (this *Assembler) opSaveFromRegister2(code []string) {
+	//save_from_register a1 a2
+	this.Pc += 3
+	reg1 := code[1]
+	reg2 := code[2]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+
+	this.Memory = append(this.Memory, InstructionSaveFromRegister2.Value(), r1, r2)
+	this.CodeCount += 3
+}
+
+func (this *Assembler) opLoadFromRegister2(code []string) {
+	//load_from_register a1 a2
+	this.Pc += 3
+	reg1 := code[1]
+	reg2 := code[2]
+
+	r1 := this.Register.ReturnRegByName(reg1)
+	r2 := this.Register.ReturnRegByName(reg2)
+
+	this.Memory = append(this.Memory, InstructionLoadFromRegister2.Value(), r1, r2)
 	this.CodeCount += 3
 }
 
 func (this *Assembler) opFuncInfo(op string) func(code []string) {
 	fun := map[string]func(asm []string){
 		InstructionSet2.Name(): this.opSet2,
+		// +-*/
+		InstructionAdd2.Name():      this.opAdd2,
+		InstructionSubtract2.Name(): this.opSub2,
+		InstructionMultiply2.Name(): this.opMul2,
+		InstructionDiv2.Name():      this.opDiv2,
+		// save \load
+		InstructionSaveFromRegister2.Name(): this.opSaveFromRegister2,
+		InstructionLoadFromRegister2.Name(): this.opLoadFromRegister2,
+		// bool
+		InstructionBoolAnd.Name():               this.opBoolAnd,
+		InstructionBoolOr.Name():                this.opBoolOr,
+		InstructionBoolGreaterThan.Name():       this.opBoolGreaterThan,
+		InstructionBoolGreaterThanEquals.Name(): this.opBoolGreaterThanEquals,
+		InstructionBoolLessThan.Name():          this.opBoolLessThan,
+		InstructionBoolLessThanEquals.Name():    this.opBoolLessThanEquals,
+		InstructionBoolEquals.Name():            this.opBoolEquals,
+		InstructionBoolNotEquals.Name():         this.opBoolNotEquals,
+		// push pop
+		InstructionPush.Name(): this.opPush,
+		InstructionPop.Name():  this.opPop,
+		// += -= *= /=
+		InstructionPlusAssign.Name():     this.opPlusAssign,
+		InstructionSubtractAssign.Name(): this.opSubtractAssign,
+		InstructionMultiplyAssign.Name(): this.opMultiplyAssign,
+		InstructionDivideAssign.Name():   this.opDivideAssign,
 	}
 	return fun[op]
 }

@@ -36,21 +36,24 @@ type Instruction struct {
 var (
 	validInstructions = []Instruction{}
 
-	InstructionHalt                  = newInstruction("halt", 255)
-	InstructionSet                   = newInstruction("set", 0)
-	InstructionLoad                  = newInstruction("load", 1)
-	InstructionAdd                   = newInstruction("add", 2)
-	InstructionSave                  = newInstruction("save", 3)
-	InstructionCompare               = newInstruction("compare", 4)
-	InstructionJumpIfLess            = newInstruction("jump_if_less", 5)
-	InstructionJump                  = newInstruction("jump", 6)
-	InstructionSaveFromRegister      = newInstruction("save_from_register", 7)
+	InstructionHalt = newInstruction("halt", 255)
+	// 8位指令暂时注释
+	//InstructionSet                   = newInstruction("set", 0)
+	//InstructionLoad                  = newInstruction("load", 1)
+	//InstructionAdd                   = newInstruction("add", 2)
+	//InstructionSave                  = newInstruction("save", 3)
+	//InstructionCompare               = newInstruction("compare", 4)
+	//InstructionJumpIfLess            = newInstruction("jump_if_less", 5)
+	//InstructionJump                  = newInstruction("jump", 6)
+	//InstructionSaveFromRegister      = newInstruction("save_from_register", 7)
+	//InstructionLoadFromRegister      = newInstruction("load_from_register", 13)
+
+	// 16位指令
 	InstructionSet2                  = newInstruction("set2", 8)
 	InstructionLoad2                 = newInstruction("load2", 9)
 	InstructionAdd2                  = newInstruction("add2", 10)
 	InstructionSave2                 = newInstruction("save2", 11)
 	InstructionSubtract2             = newInstruction("sub2", 12)
-	InstructionLoadFromRegister      = newInstruction("load_from_register", 13)
 	InstructionLoadFromRegister2     = newInstruction("load_from_register2", 14)
 	InstructionSaveFromRegister2     = newInstruction("save_from_register2", 15)
 	InstructionJumpFromRegister      = newInstruction("jump_from_register", 16)
