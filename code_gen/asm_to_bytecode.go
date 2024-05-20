@@ -371,6 +371,11 @@ func (this *Assembler) opFuncInfo(op string) func(code []string) {
 	return fun[op]
 }
 
+func (this *Assembler) opPseudoFuncInfo(op string) func(code []string) {
+	fun := map[string]func(asm []string){}
+	return fun[op]
+}
+
 // 这里去掉注释啥的
 func (this *Assembler) preProcessAsm(asm string) string {
 	return asm
@@ -398,11 +403,11 @@ func (this *Assembler) compileMachineCode(asm string) []int64 {
 			i += 1
 			continue
 		}
-		// 处理伪指令
 		if string(op[0]) == "." {
-
+			// 处理伪指令
+			this.opPseudoFuncInfo(op)(line)
 		} else {
-			// 利用 表驱动法
+			// 处理指令
 			this.opFuncInfo(op)(line)
 		}
 		i += 1
