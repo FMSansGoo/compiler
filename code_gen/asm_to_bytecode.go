@@ -2,6 +2,7 @@ package code_gen
 
 import (
 	"go-compiler/utils"
+	"strconv"
 	"strings"
 )
 
@@ -37,8 +38,25 @@ func (this *Assembler) AddCodeCount(count int64) {
 }
 
 func (this *Assembler) turnCodeToNum(code string) int64 {
-	// 数字、string、bool、null、void
-	return 0
+	// 数字、string、bool、null
+	// 前 3 位是类型
+	// 数字 000
+	// string 001
+	// bool 010
+	// null 011
+	var result int64
+	if code == "true" {
+		result = (2 << 13) + 1
+	} else if code == "false" {
+		result = (2 << 13) + 0
+	} else if code == "null" {
+		result = (3 << 13) + 0
+	} else if strings.Contains("1234567890", string(code[0])) {
+		result, _ = strconv.ParseInt(code, 10, 64)
+	} else if strings.Contains("abcdefghijklmnopqrstuvwxyz", string(code[0])) {
+
+	}
+	return result
 }
 
 func (this *Assembler) opSet2(code []string) {
@@ -339,6 +357,39 @@ func (this *Assembler) opLoadFromRegister2(code []string) {
 	this.CodeCount += 3
 }
 
+func (this *Assembler) opJump(code []string) {
+	//jump @fuck
+	//this.Pc += 3
+	//reg1 := code[1]
+	//reg2 := code[2]
+	//
+	//r1 := this.Register.ReturnRegByName(reg1)
+	//r2 := this.Register.ReturnRegByName(reg2)
+	//
+	//this.Memory = append(this.Memory, InstructionSaveFromRegister2.Value(), r1, r2)
+	//this.CodeCount += 3
+}
+
+func (this *Assembler) opJumpFromRegister(code []string) {
+	//jump @fuck
+	//this.Pc += 3
+	//reg1 := code[1]
+	//reg2 := code[2]
+	//
+	//r1 := this.Register.ReturnRegByName(reg1)
+	//r2 := this.Register.ReturnRegByName(reg2)
+	//
+	//this.Memory = append(this.Memory, InstructionSaveFromRegister2.Value(), r1, r2)
+	//this.CodeCount += 3
+}
+
+func (this *Assembler) opHalt(code []string) {
+	//halt
+	this.Pc += 1
+	this.Memory = append(this.Memory, InstructionHalt.Value())
+	this.CodeCount += 1
+}
+
 func (this *Assembler) opFuncInfo(op string) func(code []string) {
 	fun := map[string]func(asm []string){
 		InstructionSet2.Name(): this.opSet2,
@@ -367,12 +418,35 @@ func (this *Assembler) opFuncInfo(op string) func(code []string) {
 		InstructionSubtractAssign.Name(): this.opSubtractAssign,
 		InstructionMultiplyAssign.Name(): this.opMultiplyAssign,
 		InstructionDivideAssign.Name():   this.opDivideAssign,
+		// jump
+		InstructionJump.Name():             this.opJump,
+		InstructionJumpFromRegister.Name(): this.opJumpFromRegister,
+		// halt
+		InstructionHalt.Name(): this.opHalt,
 	}
 	return fun[op]
 }
 
+// todo
+func (this *Assembler) opPseudoFunction(code []string) {
+}
+
+// todo
+func (this *Assembler) opPseudoReturn(code []string) {
+
+}
+
+// todo
+func (this *Assembler) opPseudoFuncVar(code []string) {
+
+}
+
 func (this *Assembler) opPseudoFuncInfo(op string) func(code []string) {
-	fun := map[string]func(asm []string){}
+	fun := map[string]func(asm []string){
+		InstructionPseudoFunction.Name(): this.opPseudoFunction,
+		InstructionPseudoReturn.Name():   this.opPseudoReturn,
+		InstructionPseudoFuncVar.Name():  this.opPseudoFuncVar,
+	}
 	return fun[op]
 }
 
@@ -403,7 +477,9 @@ func (this *Assembler) compileMachineCode(asm string) []int64 {
 			i += 1
 			continue
 		}
-		if string(op[0]) == "." {
+		if string(op[0]) == "@" {
+			// 处理地址
+		} else if string(op[0]) == "." {
 			// 处理伪指令
 			this.opPseudoFuncInfo(op)(line)
 		} else {

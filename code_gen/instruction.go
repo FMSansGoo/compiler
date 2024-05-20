@@ -76,9 +76,15 @@ var (
 	InstructionSubtractAssign        = newInstruction("num_sub_eq", 35)
 	InstructionMultiplyAssign        = newInstruction("num_mul_eq", 36)
 	InstructionDivideAssign          = newInstruction("num_div_eq", 37)
-	InstructionReturn                = newInstruction(".return", 38)
+	InstructionJump                  = newInstruction("jump", 38)
 
-	InstructionIf = newInstruction("if", 50)
+	InstructionIf    = newInstruction("if", 50)
+	InstructionWhile = newInstruction("while", 51)
+	InstructionFor   = newInstruction("for", 52)
+
+	InstructionPseudoFunction = newInstruction(".function", 100)
+	InstructionPseudoReturn   = newInstruction(".return", 101)
+	InstructionPseudoFuncVar  = newInstruction(".func_var", 102)
 )
 
 func newInstruction(name string, value int64) Instruction {
