@@ -1,4 +1,4 @@
-package code_gen
+package asm_vm_register_base
 
 import (
 	"encoding/json"

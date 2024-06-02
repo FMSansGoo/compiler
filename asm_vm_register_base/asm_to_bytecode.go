@@ -1,4 +1,4 @@
-package code_gen
+package asm_vm_register_base
 
 import (
 	"go-compiler/utils"
@@ -46,7 +46,7 @@ func (this *Assembler) turnCodeToNum(code string) int64 {
 	// null 011
 	var result int64
 	if code == "true" {
-		result = (2 << 13) + 1
+		//result = (1 << 13) + 0
 	} else if code == "false" {
 		result = (2 << 13) + 0
 	} else if code == "null" {

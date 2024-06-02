@@ -1,13 +1,6 @@
-package code_gen
+package asm_vm_register_base
 
 import "fmt"
-
-// pa: 0b00000000,
-// a1: 0b00010000,
-// a2: 0b00100000,
-// a3: 0b00110000,
-// c1: 0b01000000,
-// f1: 0b01010000,
 
 type Register struct {
 	RegisterPointer int
