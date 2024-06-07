@@ -8,11 +8,13 @@ type OpCode struct {
 }
 
 var (
-	validOpCodes = []OpCode{}
-	// opCodeType
-	OpCodePush     = newOpCode("Push", 1)
-	OpCodePop      = newOpCode("Pop", 2)
-	OpCodeConstant = newOpCode("Constant", 3)
+	validOpCodes   = []OpCode{}
+	OpCodeConstant = newOpCode("Constant", 1)
+	OpCodeAdd      = newOpCode("Add", 2)
+	OpCodeSub      = newOpCode("Sub", 3)
+	OpCodeMul      = newOpCode("Mul", 4)
+	OpCodeDiv      = newOpCode("Div", 5)
+	OpCodePop      = newOpCode("Pop", 10)
 )
 
 func newOpCode(name string, value int64) OpCode {
@@ -65,4 +67,13 @@ func GetOpCodeFromName(s string) OpCode {
 		}
 	}
 	panic(fmt.Errorf("invalid Opcode name: (%+v)", s))
+}
+
+func GetOpCodeFromValue(op byte) OpCode {
+	for _, v := range OpCodeAll() {
+		if v.Value() == int64(op) {
+			return v
+		}
+	}
+	panic(fmt.Errorf("invalid Opcode value: (%+v)", op))
 }

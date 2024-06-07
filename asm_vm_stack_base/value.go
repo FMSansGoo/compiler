@@ -5,7 +5,7 @@ type Object interface {
 }
 
 type NumberObject struct {
-	Value int64
+	Value float64
 }
 
 func (n NumberObject) ValueType() string {

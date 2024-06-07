@@ -1,0 +1,62 @@
+package asm_vm_stack_base
+
+import (
+	"fmt"
+	sansLexer "go-compiler/lexer"
+	sansParser "go-compiler/parser"
+	"go-compiler/utils"
+	"testing"
+)
+
+type vmTestCase struct {
+	input    string
+	expected interface{}
+}
+
+func TestVm(t *testing.T) {
+	tests := []vmTestCase{
+		//{"1", 1},
+		//{"2", 2},
+		{"1 + 2", 3},
+		//{"1 - 2", -1},
+		//{"1 * 2", 2},
+		//{"4 / 2", 2},
+		//{"50 / 2 * 2 + 10 - 5", 55},
+		//{"5 * (2 + 10)", 60},
+		//{"5 + 5 + 5 + 5 - 10", 10},
+		//{"2 * 2 * 2 * 2 * 2", 32},
+		//{"5 * 2 + 10", 20},
+		//{"5 + 2 * 10", 25},
+	}
+
+	runVmTests(t, tests)
+}
+
+func runVmTests(t *testing.T, tests []vmTestCase) {
+	t.Helper()
+
+	for _, tt := range tests {
+		lexer := sansLexer.SansLangLexer{}
+		lexer.Code = tt.input
+		tokenList := lexer.TokenList()
+		tokensLexer := sansLexer.TokenList{
+			Tokens: tokenList,
+		}
+		fmt.Printf("Tokens %+v\n", tokensLexer.Tokens)
+		parser := sansParser.NewSansLangParser(&tokensLexer)
+		ast := parser.Parse()
+		compiler := NewCompiler()
+		compiler.Compile(ast)
+		bytecode := compiler.ReturnBytecode()
+		utils.LogInfo("bytecode: %+v", bytecode)
+
+		vm := NewVM(bytecode)
+		err := vm.Run()
+		if err != nil {
+			t.Fatalf("vm error: %s", err)
+		}
+
+		stackElem := vm.GetLastStackItem()
+		utils.LogInfo("stackElem: %+v", stackElem)
+	}
+}
