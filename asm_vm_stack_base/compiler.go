@@ -61,13 +61,30 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.emit(OpCodeMul)
 		case "/":
 			c.emit(OpCodeDiv)
+		case "==":
+			c.emit(OpCodeEquals)
+		case "!=":
+			c.emit(OpCodeNotEquals)
+		case ">=":
+			c.emit(OpCodeGreaterThan)
 		}
 		c.emit(OpCodePop)
-
 	case parser.AstTypeNumberLiteral.Name():
 		v := node.(parser.NumberLiteral).Value
 		integer := &NumberObject{Value: v}
 		c.emit(OpCodeConstant, c.addConstant(integer))
+	case parser.AstTypeBooleanLiteral.Name():
+		v := node.(parser.BooleanLiteral).Value
+		if v {
+			c.emit(OpCodeTrue)
+		} else {
+			c.emit(OpCodeFalse)
+		}
+	case parser.AstTypeNullLiteral.Name():
+		_, ok := node.(parser.NullLiteral)
+		if ok {
+			c.emit(OpCodeNull)
+		}
 	default:
 		utils.LogError("unknown node type: %s", node.Type())
 	}

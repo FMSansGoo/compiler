@@ -56,6 +56,63 @@ func TestIntegerArithmetic(t *testing.T) {
 				GenerateByte(OpCodePop),
 			},
 		},
+		{
+			input:             "1 >= 2",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeGreaterThan),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             "1 == 2",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeEquals),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             "1 != 2",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeNotEquals),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+	runCompilerTests(t, tests)
+}
+
+func TestIntegerTrueAndFalseAndNull(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input:             "true",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeTrue),
+			},
+		},
+		{
+			input:             "false",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeFalse),
+			},
+		},
+		{
+			input:             "null",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeNull),
+			},
+		},
 	}
 	runCompilerTests(t, tests)
 }
@@ -78,13 +135,13 @@ func runCompilerTests(t *testing.T, tests []CompilerTest) {
 
 		err := testInstructions(tt.expectedInstructions, bytecode.Instructions)
 		if err != nil {
-			utils.LogError("testInstructions failed: %s", err)
+			utils.LogError("testInstructions failed", err)
 		}
 
 		err = testConstants(t, tt.expectedConstants, bytecode.Constants)
 
 		if err != nil {
-			utils.LogError("testConstants failed: %s", err)
+			utils.LogError("testConstants failed", err)
 		}
 
 	}

@@ -17,13 +17,23 @@ type Definition struct {
 var definitions = map[OpCode]*Definition{
 	//OperandWidths 包含每个操作数占用的字节数。
 	// const 2 字节，16位，1 个操作数
-	OpCodeConstant: {OpCodeConstant.Name(), 2, 1},
-	OpCodeAdd:      {OpCodeAdd.Name(), 0, 0},
-	OpCodeSub:      {OpCodeSub.Name(), 0, 0},
-	OpCodeMul:      {OpCodeMul.Name(), 0, 0},
-	OpCodeDiv:      {OpCodeDiv.Name(), 0, 0},
-	OpCodePop:      {OpCodePop.Name(), 0, 0},
+	OpCodeConstant:    {OpCodeConstant.Name(), 2, 1},
+	OpCodeAdd:         {OpCodeAdd.Name(), 0, 0},
+	OpCodeSub:         {OpCodeSub.Name(), 0, 0},
+	OpCodeMul:         {OpCodeMul.Name(), 0, 0},
+	OpCodeDiv:         {OpCodeDiv.Name(), 0, 0},
+	OpCodePop:         {OpCodePop.Name(), 0, 0},
+	OpCodeTrue:        {OpCodeTrue.Name(), 0, 0},
+	OpCodeFalse:       {OpCodeFalse.Name(), 0, 0},
+	OpCodeNull:        {OpCodeNull.Name(), 0, 0},
+	OpCodeEquals:      {OpCodeEquals.Name(), 0, 0},
+	OpCodeNotEquals:   {OpCodeNotEquals.Name(), 0, 0},
+	OpCodeGreaterThan: {OpCodeGreaterThan.Name(), 0, 0},
 }
+
+//OpEqual:         {"OpEqual", []int{}},
+//OpNotEqual:      {"OpNotEqual", []int{}},
+//OpGreaterThan:   {"OpGreaterThan", []int{}},
 
 func Lookup(op string) (*Definition, error) {
 	opCode := GetOpCodeFromName(op)

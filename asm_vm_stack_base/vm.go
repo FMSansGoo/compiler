@@ -51,6 +51,21 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case OpCodeTrue:
+			err := vm.push(&BoolObject{Value: true})
+			if err != nil {
+				return err
+			}
+		case OpCodeFalse:
+			err := vm.push(&BoolObject{Value: false})
+			if err != nil {
+				return err
+			}
+		case OpCodeNull:
+			err := vm.push(&NullObject{})
+			if err != nil {
+				return err
+			}
 		}
 		// 指针 + 1
 		vm.pa += 1

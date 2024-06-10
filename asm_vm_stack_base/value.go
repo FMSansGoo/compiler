@@ -13,7 +13,7 @@ func (n NumberObject) ValueType() string {
 }
 
 type BoolObject struct {
-	Value string
+	Value bool
 }
 
 func (b BoolObject) ValueType() string {
@@ -26,4 +26,11 @@ type StringObject struct {
 
 func (b StringObject) ValueType() string {
 	return "StringObject"
+}
+
+type NullObject struct {
+}
+
+func (b NullObject) ValueType() string {
+	return "NullObject"
 }

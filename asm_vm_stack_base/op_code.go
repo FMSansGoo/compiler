@@ -8,13 +8,19 @@ type OpCode struct {
 }
 
 var (
-	validOpCodes   = []OpCode{}
-	OpCodeConstant = newOpCode("Constant", 1)
-	OpCodeAdd      = newOpCode("Add", 2)
-	OpCodeSub      = newOpCode("Sub", 3)
-	OpCodeMul      = newOpCode("Mul", 4)
-	OpCodeDiv      = newOpCode("Div", 5)
-	OpCodePop      = newOpCode("Pop", 10)
+	validOpCodes      = []OpCode{}
+	OpCodeConstant    = newOpCode("Constant", 1)
+	OpCodeAdd         = newOpCode("Add", 2)
+	OpCodeSub         = newOpCode("Sub", 3)
+	OpCodeMul         = newOpCode("Mul", 4)
+	OpCodeDiv         = newOpCode("Div", 5)
+	OpCodePop         = newOpCode("Pop", 10)
+	OpCodeTrue        = newOpCode("True", 20)
+	OpCodeFalse       = newOpCode("False", 21)
+	OpCodeNull        = newOpCode("Null", 22)
+	OpCodeEquals      = newOpCode("Equals", 23)
+	OpCodeNotEquals   = newOpCode("OpCodeNotEquals", 24)
+	OpCodeGreaterThan = newOpCode("GreaterThan", 25)
 )
 
 func newOpCode(name string, value int64) OpCode {
