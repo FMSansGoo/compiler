@@ -540,6 +540,24 @@ func (this *SemanticAnalysisV2) visitUnaryExpression(node parser.Node) AllType {
 			return UnKnownType{}
 		}
 		return BooleanType{}
+	case "-":
+		var vValueType AllType
+		// - 后面只能加 identifier / number
+		v := node.(parser.UnaryExpression).Value
+		switch v.Type() {
+		case parser.AstTypeBinaryExpression.Name():
+			vValueType = this.visitBinaryExpression(v)
+		case parser.AstTypeIdentifier.Name():
+			vValueType, _, _ = this.visitIdentifier(v)
+		case parser.AstTypeNumberLiteral.Name():
+			vValueType = this.visitNumberLiteral(v)
+		}
+		numberType := NumberType{}.ValueType()
+		if vValueType.ValueType() != numberType {
+			utils.LogError("not value type error", vValueType)
+			return UnKnownType{}
+		}
+		return NumberType{}
 	default:
 		utils.LogError("not support unary expression operator", node.(parser.UnaryExpression).Operator)
 		return UnKnownType{}

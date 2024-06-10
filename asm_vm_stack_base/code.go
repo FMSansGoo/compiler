@@ -30,6 +30,7 @@ var definitions = map[OpCode]*Definition{
 	OpCodeNotEquals:     {OpCodeNotEquals.Name(), 0, 0},
 	OpCodeGreaterThan:   {OpCodeGreaterThan.Name(), 0, 0},
 	OpCodeNot:           {OpCodeNot.Name(), 0, 0},
+	OpCodeMinus:         {OpCodeMinus.Name(), 0, 0},
 	OpCodeJump:          {OpCodeJump.Name(), 2, 1},
 	OpCodeJumpNotTruthy: {OpCodeJumpNotTruthy.Name(), 2, 1},
 }

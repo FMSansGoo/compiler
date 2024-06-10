@@ -695,7 +695,7 @@ func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 	return node
 }
 
-// not
+// not or -
 func (this *SansLangParser) astParseNotExpression() Node {
 	if this.Expect(sansLexer.TokenTypeNot) {
 		notValue := this.Match(sansLexer.TokenTypeNot)
@@ -703,6 +703,14 @@ func (this *SansLangParser) astParseNotExpression() Node {
 			rightAst := this.astParseCallMemberExpression()
 			if rightAst != nil {
 				return UnaryExpression{Value: rightAst, Operator: notValue.Value}
+			}
+		}
+	} else if this.Expect(sansLexer.TokenTypeMinus) {
+		minusValue := this.Match(sansLexer.TokenTypeMinus)
+		if !minusValue.Error() {
+			rightAst := this.astParseCallMemberExpression()
+			if rightAst != nil {
+				return UnaryExpression{Value: rightAst, Operator: minusValue.Value}
 			}
 		}
 	}

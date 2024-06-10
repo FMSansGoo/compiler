@@ -8,9 +8,9 @@ import (
 
 func TestNewBaseParser(t *testing.T) {
 	//基本类型
-	//testParser1()
+	testParser1()
 	//多重运算
-	testParser2()
+	//testParser2()
 	//for 循环 while 循环 if else
 	//testParser3()
 	//// 函数
@@ -28,6 +28,7 @@ func testParser1() {
 	const d = null
 	var e = [1,2,3]
 	var f = {"a":1,"b":2}
+	var d = -1
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

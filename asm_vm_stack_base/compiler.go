@@ -55,13 +55,15 @@ func (c *Compiler) Compile(node parser.Node) {
 		}
 	case parser.AstTypeUnaryExpression.Name():
 		n := node.(parser.UnaryExpression)
+		c.Compile(n.Value)
 		switch n.Operator {
 		case "not":
 			c.emit(OpCodeNot)
+		case "-":
+			c.emit(OpCodeMinus)
 		default:
 			utils.LogError("unknown operator", n.Operator)
 		}
-		c.Compile(n.Value)
 	case parser.AstTypeBinaryExpression.Name():
 		op := node.(parser.BinaryExpression).Operator
 		c.Compile(node.(parser.BinaryExpression).Left)

@@ -10,7 +10,7 @@ import (
 
 func TestSemanticAnalysisV2(t *testing.T) {
 	//基本类型
-	//testSemanticAnalysis1_1()
+	testSemanticAnalysis1_1()
 	////多重运算
 	//testSemanticAnalysis2_1()
 	////for 循环 while 循环 if else continue return
@@ -24,7 +24,7 @@ func TestSemanticAnalysisV2(t *testing.T) {
 	//testSemanticAnalysis5_2()
 	//testSemanticAnalysis5_3()
 	//testSemanticAnalysis5_4()
-	testSemanticAnalysis5_5()
+	//testSemanticAnalysis5_5()
 
 }
 
@@ -32,6 +32,7 @@ func testSemanticAnalysis1_1() {
 	lexer := lexer2.SansLangLexer{}
 	lexer.Code = `
 		var a = 1
+		var g = -1
 		var b = "string"
 		const c = true
 		const d = null

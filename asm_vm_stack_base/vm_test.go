@@ -32,6 +32,8 @@ func TestVm(t *testing.T) {
 		{"2 * 2 * 2 * 2 * 2", 32},
 		{"5 * 2 + 10", 20},
 		{"5 + 2 * 10", 25},
+		{"-1", -1},
+		{"not true", false},
 	}
 
 	runVmTests(t, tests)

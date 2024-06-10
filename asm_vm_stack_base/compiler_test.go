@@ -128,8 +128,17 @@ func TestLiteral(t *testing.T) {
 			input:             "not true",
 			expectedConstants: []interface{}{},
 			expectedInstructions: []Instructions{
-				GenerateByte(OpCodeNot),
 				GenerateByte(OpCodeTrue),
+				GenerateByte(OpCodeNot),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             "-1",
+			expectedConstants: []interface{}{1},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeMinus),
 				GenerateByte(OpCodePop),
 			},
 		},

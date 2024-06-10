@@ -67,16 +67,35 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case OpCodeNot:
-			err := vm.push(&BoolObject{Value: false})
-			if err != nil {
-				return err
+			operand := vm.pop()
+
+			switch operand {
+			case &BoolObject{Value: true}:
+				return vm.push(&BoolObject{Value: false})
+			case &BoolObject{Value: false}:
+				return vm.push(&BoolObject{Value: true})
+			case &NullObject{}:
+				return vm.push(&BoolObject{Value: true})
+			default:
+				return vm.push(&BoolObject{Value: false})
 			}
+		case OpCodeMinus:
+			operand := vm.pop()
+
+			numType := NumberObject{}.ValueType()
+			if operand.ValueType() != numType {
+				return fmt.Errorf("unsupported type for negation: %s", operand.ValueType())
+			}
+
+			value := operand.(*NumberObject).Value
+			return vm.push(&NumberObject{Value: -value})
 		case OpCodeNull:
 			err := vm.push(&NullObject{})
 			if err != nil {
 				return err
 			}
 		case OpCodeJumpNotTruthy:
+			// 这里塞入真实的地址
 			pos := int(ReadUint16(vm.instructions[vm.pa+1:]))
 			vm.pa += 2
 
