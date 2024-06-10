@@ -1,8 +1,10 @@
 package parser
 
 import (
+	"encoding/json"
 	"fmt"
 	sansLexer "go-compiler/lexer"
+	"go-compiler/utils"
 	"strconv"
 )
 
@@ -70,6 +72,12 @@ func (this *SansLangParser) Parse() Program {
 	if !eofToken.Nil() {
 		fmt.Errorf("Parse error current:%v pos:%v", this.Current(), this.Position)
 	}
+	// 将节点转换为JSON字符串
+	jsonData, err := json.MarshalIndent(programAst, "", "    ")
+	if err != nil {
+		fmt.Println("转换为JSON时出错:", err)
+	}
+	utils.LogInfo("jsonData", string(jsonData))
 	return programAst
 }
 

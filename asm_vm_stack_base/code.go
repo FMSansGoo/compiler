@@ -29,6 +29,7 @@ var definitions = map[OpCode]*Definition{
 	OpCodeEquals:      {OpCodeEquals.Name(), 0, 0},
 	OpCodeNotEquals:   {OpCodeNotEquals.Name(), 0, 0},
 	OpCodeGreaterThan: {OpCodeGreaterThan.Name(), 0, 0},
+	OpCodeNot:         {OpCodeNot.Name(), 0, 0},
 }
 
 //OpEqual:         {"OpEqual", []int{}},

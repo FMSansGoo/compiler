@@ -61,6 +61,16 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case OpCodeEquals, OpCodeNotEquals, OpCodeGreaterThan:
+			err := vm.executeComparison(opCode)
+			if err != nil {
+				return err
+			}
+		case OpCodeNot:
+			err := vm.push(&BoolObject{Value: false})
+			if err != nil {
+				return err
+			}
 		case OpCodeNull:
 			err := vm.push(&NullObject{})
 			if err != nil {
@@ -72,6 +82,42 @@ func (vm *VM) Run() error {
 	}
 
 	return nil
+}
+
+func (vm *VM) executeComparison(op OpCode) error {
+	right := vm.pop()
+	left := vm.pop()
+
+	numType := NumberObject{}.ValueType()
+
+	if left.ValueType() == numType || right.ValueType() == numType {
+		return vm.executeIntegerComparison(op, left, right)
+	}
+
+	switch op {
+	case OpCodeEquals:
+		return vm.push(&BoolObject{Value: right == left})
+	case OpCodeNotEquals:
+		return vm.push(&BoolObject{Value: right != left})
+	default:
+		return fmt.Errorf("unknown operator: %+v %s %s", op, left.ValueType(), right.ValueType())
+	}
+}
+
+func (vm *VM) executeIntegerComparison(op OpCode, left, right Object) error {
+	leftValue := left.(*NumberObject).Value
+	rightValue := right.(*NumberObject).Value
+
+	switch op {
+	case OpCodeEquals:
+		return vm.push(&BoolObject{Value: leftValue == rightValue})
+	case OpCodeNotEquals:
+		return vm.push(&BoolObject{Value: rightValue != leftValue})
+	case OpCodeGreaterThan:
+		return vm.push(&BoolObject{Value: rightValue > leftValue})
+	default:
+		return fmt.Errorf("unknown operator: %+v ", op)
+	}
 }
 
 func (vm *VM) executeBinaryOperation(op OpCode) error {
@@ -144,6 +190,10 @@ func (vm *VM) pop() Object {
 }
 
 func (vm *VM) GetStackTop() Object {
+	utils.LogInfo("GetLastStackItem", vm.sp)
+	if vm.sp == 0 {
+		return vm.GetLastStackItem()
+	}
 	return vm.stack[vm.sp-1]
 }
 

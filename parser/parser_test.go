@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"encoding/json"
 	"fmt"
 	sansLexer "go-compiler/lexer"
 	"testing"
@@ -44,15 +43,7 @@ func testParser1() {
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
-	// 将节点转换为JSON字符串
-	jsonData, err := json.MarshalIndent(ast, "", "    ")
-	if err != nil {
-		fmt.Println("转换为JSON时出错:", err)
-		return
-	}
-
 	// 打印JSON字符串
-	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 }
 
@@ -76,15 +67,6 @@ func testParser2() {
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
-	// 将节点转换为JSON字符串
-	jsonData, err := json.MarshalIndent(ast, "", "    ")
-	if err != nil {
-		fmt.Println("转换为JSON时出错:", err)
-		return
-	}
-
-	// 打印JSON字符串
-	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 }
 
@@ -119,15 +101,6 @@ func testParser3() {
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
-	// 将节点转换为JSON字符串
-	jsonData, err := json.MarshalIndent(ast, "", "    ")
-	if err != nil {
-		fmt.Println("转换为JSON时出错:", err)
-		return
-	}
-
-	// 打印JSON字符串
-	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 }
 
@@ -157,15 +130,6 @@ func testParser4() {
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
-	// 将节点转换为JSON字符串
-	jsonData, err := json.MarshalIndent(ast, "", "    ")
-	if err != nil {
-		fmt.Println("转换为JSON时出错:", err)
-		return
-	}
-
-	// 打印JSON字符串
-	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 }
 
@@ -205,14 +169,5 @@ func testParser5() {
 	ast := parser.Parse()
 	fmt.Printf("Ast %+v\n", ast)
 
-	// 将节点转换为JSON字符串
-	jsonData, err := json.MarshalIndent(ast, "", "    ")
-	if err != nil {
-		fmt.Println("转换为JSON时出错:", err)
-		return
-	}
-
-	// 打印JSON字符串
-	fmt.Println(string(jsonData))
 	fmt.Println("====================== parser end =======================")
 }

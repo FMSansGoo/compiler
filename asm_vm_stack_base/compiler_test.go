@@ -90,13 +90,22 @@ func TestIntegerArithmetic(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
-func TestIntegerTrueAndFalseAndNull(t *testing.T) {
+func TestLiteral(t *testing.T) {
 	tests := []CompilerTest{
+		{
+			input:             "1",
+			expectedConstants: []interface{}{1},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
 		{
 			input:             "true",
 			expectedConstants: []interface{}{},
 			expectedInstructions: []Instructions{
 				GenerateByte(OpCodeTrue),
+				GenerateByte(OpCodePop),
 			},
 		},
 		{
@@ -104,6 +113,7 @@ func TestIntegerTrueAndFalseAndNull(t *testing.T) {
 			expectedConstants: []interface{}{},
 			expectedInstructions: []Instructions{
 				GenerateByte(OpCodeFalse),
+				GenerateByte(OpCodePop),
 			},
 		},
 		{
@@ -111,6 +121,16 @@ func TestIntegerTrueAndFalseAndNull(t *testing.T) {
 			expectedConstants: []interface{}{},
 			expectedInstructions: []Instructions{
 				GenerateByte(OpCodeNull),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             "not true",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeNot),
+				GenerateByte(OpCodeTrue),
+				GenerateByte(OpCodePop),
 			},
 		},
 	}

@@ -21,6 +21,7 @@ var (
 	OpCodeEquals      = newOpCode("Equals", 23)
 	OpCodeNotEquals   = newOpCode("OpCodeNotEquals", 24)
 	OpCodeGreaterThan = newOpCode("GreaterThan", 25)
+	OpCodeNot         = newOpCode("Not", 26)
 )
 
 func newOpCode(name string, value int64) OpCode {

@@ -1,7 +1,6 @@
 package asm_vm_stack_base
 
 import (
-	"fmt"
 	"go-compiler/parser"
 	"go-compiler/utils"
 )
@@ -47,7 +46,18 @@ func (c *Compiler) Compile(node parser.Node) {
 		bodys := node.(parser.Program).Body
 		for _, body := range bodys {
 			c.Compile(body)
+			c.emit(OpCodePop)
 		}
+
+	case parser.AstTypeUnaryExpression.Name():
+		n := node.(parser.UnaryExpression)
+		switch n.Operator {
+		case "not":
+			c.emit(OpCodeNot)
+		default:
+			utils.LogError("unknown operator", n.Operator)
+		}
+		c.Compile(n.Value)
 	case parser.AstTypeBinaryExpression.Name():
 		op := node.(parser.BinaryExpression).Operator
 		c.Compile(node.(parser.BinaryExpression).Left)
@@ -68,7 +78,6 @@ func (c *Compiler) Compile(node parser.Node) {
 		case ">=":
 			c.emit(OpCodeGreaterThan)
 		}
-		c.emit(OpCodePop)
 	case parser.AstTypeNumberLiteral.Name():
 		v := node.(parser.NumberLiteral).Value
 		integer := &NumberObject{Value: v}
@@ -92,7 +101,6 @@ func (c *Compiler) Compile(node parser.Node) {
 
 func (c *Compiler) emit(op OpCode, operands ...int) int {
 	ins := GenerateByte(op, operands...)
-	fmt.Printf("ins print %v\n", ins)
 	pos := c.addInstruction(ins)
 
 	c.setLastInstruction(op, pos)
@@ -110,7 +118,8 @@ func (c *Compiler) setLastInstruction(op OpCode, pos int) {
 }
 
 func (c *Compiler) currentInstructions() Instructions {
-	return c.scopes[c.scopeIndex].instructions
+	instructions := c.scopes[c.scopeIndex].instructions
+	return instructions
 }
 
 func (c *Compiler) addInstruction(ins []byte) int {
