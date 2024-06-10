@@ -76,6 +76,18 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case OpCodeJumpNotTruthy:
+			pos := int(ReadUint16(vm.instructions[vm.pa+1:]))
+			vm.pa += 2
+
+			condition := vm.pop()
+			if !isTruthy(condition) {
+				vm.pa = pos - 1
+			}
+		case OpCodeJump:
+			pos := int(ReadUint16(vm.instructions[vm.pa+1:]))
+			vm.pa = pos - 1
+
 		}
 		// 指针 + 1
 		vm.pa += 1
@@ -199,4 +211,15 @@ func (vm *VM) GetStackTop() Object {
 
 func (vm *VM) GetLastStackItem() Object {
 	return vm.stack[vm.sp]
+}
+
+func isTruthy(obj Object) bool {
+	switch obj := obj.(type) {
+	case *BoolObject:
+		return obj.Value
+	case *NullObject:
+		return false
+	default:
+		return true
+	}
 }

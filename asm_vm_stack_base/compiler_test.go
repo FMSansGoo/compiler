@@ -137,6 +137,44 @@ func TestLiteral(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestIf(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input: `
+			if (true) { 10 } 
+			`,
+			expectedConstants: []interface{}{10},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeTrue),
+				// 10 也是地址
+				GenerateByte(OpCodeJumpNotTruthy, 10),
+				GenerateByte(OpCodeConstant, 0),
+				// 11 也是地址
+				GenerateByte(OpCodeJump, 11),
+				GenerateByte(OpCodeNull),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input: `
+			if (true) { 10 } else { 20 }
+			`,
+			expectedConstants: []interface{}{10, 20},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeTrue),
+				// 10 也是地址
+				GenerateByte(OpCodeJumpNotTruthy, 10),
+				GenerateByte(OpCodeConstant, 0),
+				// 13 也是地址
+				GenerateByte(OpCodeJump, 13),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []CompilerTest) {
 	for _, tt := range tests {
 		fmt.Printf("--- %s ---\n", tt.input)

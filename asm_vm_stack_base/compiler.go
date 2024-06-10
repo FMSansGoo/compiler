@@ -48,7 +48,11 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.Compile(body)
 			c.emit(OpCodePop)
 		}
-
+	case parser.AstTypeBlockStatement.Name():
+		body := node.(parser.BlockStatement).Body
+		for _, item := range body {
+			c.Compile(item)
+		}
 	case parser.AstTypeUnaryExpression.Name():
 		n := node.(parser.UnaryExpression)
 		switch n.Operator {
@@ -89,6 +93,37 @@ func (c *Compiler) Compile(node parser.Node) {
 		} else {
 			c.emit(OpCodeFalse)
 		}
+	case parser.AstTypeIfStatement.Name():
+		n := node.(parser.IfStatement)
+		condition := n.Condition
+		c.Compile(condition)
+
+		// 用 9999 当占位符
+		jumpNotTruthyPos := c.emit(OpCodeJump, 9999)
+		c.Compile(n.Consequent)
+
+		if c.lastInstructionIs(OpCodePop) {
+			c.removeLastPop()
+		}
+
+		// Emit an `OpJump` with a bogus value
+		jumpPos := c.emit(OpCodeJump, 9999)
+
+		afterConsequencePos := len(c.currentInstructions())
+		// 将占位符换成真实地址
+		c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
+
+		if n.Alternate == nil {
+			c.emit(OpCodeNull)
+		} else {
+			c.Compile(n.Alternate)
+
+			if c.lastInstructionIs(OpCodePop) {
+				c.removeLastPop()
+			}
+		}
+		afterAlternative := len(c.currentInstructions())
+		c.changeOperand(jumpPos, afterAlternative)
 	case parser.AstTypeNullLiteral.Name():
 		_, ok := node.(parser.NullLiteral)
 		if ok {
@@ -120,6 +155,40 @@ func (c *Compiler) setLastInstruction(op OpCode, pos int) {
 func (c *Compiler) currentInstructions() Instructions {
 	instructions := c.scopes[c.scopeIndex].instructions
 	return instructions
+}
+
+func (c *Compiler) replaceInstruction(pos int, newInstruction []byte) {
+	ins := c.currentInstructions()
+
+	for i := 0; i < len(newInstruction); i++ {
+		ins[pos+i] = newInstruction[i]
+	}
+}
+
+func (c *Compiler) changeOperand(opPos int, operand int) {
+	op := GetOpCodeFromValue(c.currentInstructions()[opPos])
+	newInstruction := GenerateByte(op, operand)
+
+	c.replaceInstruction(opPos, newInstruction)
+}
+
+func (c *Compiler) removeLastPop() {
+	last := c.scopes[c.scopeIndex].lastInstruction
+	previous := c.scopes[c.scopeIndex].previousInstruction
+
+	old := c.currentInstructions()
+	new := old[:last.Position]
+
+	c.scopes[c.scopeIndex].instructions = new
+	c.scopes[c.scopeIndex].lastInstruction = previous
+}
+
+func (c *Compiler) lastInstructionIs(op OpCode) bool {
+	if len(c.currentInstructions()) == 0 {
+		return false
+	}
+
+	return c.scopes[c.scopeIndex].lastInstruction.Opcode == op
 }
 
 func (c *Compiler) addInstruction(ins []byte) int {
