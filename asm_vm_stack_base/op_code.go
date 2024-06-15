@@ -25,6 +25,9 @@ var (
 	OpCodeMinus         = newOpCode("Minus", 27)
 	OpCodeJumpNotTruthy = newOpCode("JumpNotTruthy", 40)
 	OpCodeJump          = newOpCode("Jump", 41)
+
+	OpCodeSetGlobal = newOpCode("SetGlobal", 50)
+	OpCodeGetGlobal = newOpCode("GetGlobal", 51)
 )
 
 func newOpCode(name string, value int64) OpCode {

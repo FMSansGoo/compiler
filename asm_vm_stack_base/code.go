@@ -1,11 +1,68 @@
 package asm_vm_stack_base
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"go-compiler/utils"
 )
 
 type Instructions []byte
+
+func (ins Instructions) String() string {
+	var out bytes.Buffer
+
+	i := 0
+	for i < len(ins) {
+		def, err := Lookup(GetOpCodeFromValue(ins[i]).Name())
+		if err != nil {
+			fmt.Fprintf(&out, "ERROR: %s\n", err)
+			continue
+		}
+
+		utils.LogInfo("def   ", def)
+		operands, read := ReadOperands(def, ins[i+1:])
+
+		fmt.Fprintf(&out, "%04d %s\n", i, ins.fmtInstruction(def, operands))
+
+		i += 1 + read
+	}
+
+	return out.String()
+}
+
+func (ins Instructions) fmtInstruction(def *Definition, operands []int) string {
+	operandCount := def.OperandWidths
+
+	if len(operands) != operandCount {
+		return fmt.Sprintf("ERROR: operand len %d does not match defined %d\n", len(operands), operandCount)
+	}
+
+	switch operandCount {
+	case 0:
+		return def.Name
+	case 1:
+		return fmt.Sprintf("%s %d", def.Name, operands[0])
+	case 2:
+		return fmt.Sprintf("%s %d %d", def.Name, operands[0], operands[1])
+	}
+
+	return fmt.Sprintf("ERROR: unhandled operandCount for %s\n", def.Name)
+}
+
+func ReadOperands(def *Definition, ins Instructions) ([]int, int) {
+	operands := make([]int, def.OperandWidths*def.OperandNums)
+	offset := 0
+
+	switch def.OperandWidths {
+	case 2:
+		operands[offset] = int(ReadUint16(ins[offset:]))
+	}
+
+	offset += def.OperandWidths
+
+	return operands, offset
+}
 
 type Definition struct {
 	Name          string // 指令名称
@@ -33,6 +90,8 @@ var definitions = map[OpCode]*Definition{
 	OpCodeMinus:         {OpCodeMinus.Name(), 0, 0},
 	OpCodeJump:          {OpCodeJump.Name(), 2, 1},
 	OpCodeJumpNotTruthy: {OpCodeJumpNotTruthy.Name(), 2, 1},
+	OpCodeSetGlobal:     {OpCodeSetGlobal.Name(), 2, 1},
+	OpCodeGetGlobal:     {OpCodeGetGlobal.Name(), 2, 1},
 }
 
 //OpEqual:         {"OpEqual", []int{}},

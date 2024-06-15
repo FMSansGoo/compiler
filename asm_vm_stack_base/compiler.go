@@ -10,6 +10,7 @@ type Compiler struct {
 	constants    []Object
 	scopes       []CompilationScope
 	scopeIndex   int
+	symbolTable  *SymbolTable
 }
 
 type EmittedInstruction struct {
@@ -37,6 +38,7 @@ func NewCompiler() *Compiler {
 		scopes: []CompilationScope{
 			globalScope,
 		},
+		symbolTable: NewSymbolTable(),
 	}
 }
 
@@ -46,13 +48,31 @@ func (c *Compiler) Compile(node parser.Node) {
 		bodys := node.(parser.Program).Body
 		for _, body := range bodys {
 			c.Compile(body)
-			c.emit(OpCodePop)
 		}
+		c.emit(OpCodePop)
 	case parser.AstTypeBlockStatement.Name():
 		body := node.(parser.BlockStatement).Body
 		for _, item := range body {
 			c.Compile(item)
 		}
+	case parser.AstTypeVariableDeclaration.Name():
+		n := node.(parser.VariableDeclaration)
+		name := n.Name.(parser.Identifier).Value
+		utils.LogInfo("define variable", name)
+		symbol := c.symbolTable.Define(name)
+		c.Compile(n.Value)
+
+		if symbol.Scope == GlobalScope {
+			c.emit(OpCodeSetGlobal, symbol.Index)
+		}
+	case parser.AstTypeIdentifier.Name():
+		n := node.(parser.Identifier)
+		symbol, ok := c.symbolTable.Resolve(n.Value)
+		if !ok {
+			utils.LogError("undefined variable", n.Value)
+		}
+
+		c.loadSymbol(symbol)
 	case parser.AstTypeUnaryExpression.Name():
 		n := node.(parser.UnaryExpression)
 		c.Compile(n.Value)
@@ -101,7 +121,7 @@ func (c *Compiler) Compile(node parser.Node) {
 		c.Compile(condition)
 
 		// 用 9999 当占位符
-		jumpNotTruthyPos := c.emit(OpCodeJump, 9999)
+		jumpNotTruthyPos := c.emit(OpCodeJumpNotTruthy, 9999)
 		c.Compile(n.Consequent)
 
 		if c.lastInstructionIs(OpCodePop) {
@@ -218,4 +238,17 @@ func (c *Compiler) ReturnBytecode() *Bytecode {
 type Bytecode struct {
 	Instructions Instructions
 	Constants    []Object
+}
+
+func (c *Compiler) loadSymbol(s Symbol) {
+	switch s.Scope {
+	case GlobalScope:
+		c.emit(OpCodeGetGlobal, s.Index)
+		//case LocalScope:
+		//	c.emit(code.OpGetLocal, s.Index)
+		//case BuiltinScope:
+		//	c.emit(code.OpGetBuiltin, s.Index)
+		//case FreeScope:
+		//	c.emit(code.OpGetFree, s.Index)
+	}
 }

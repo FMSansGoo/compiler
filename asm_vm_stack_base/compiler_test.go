@@ -184,6 +184,56 @@ func TestIf(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestGlobalLetStatements(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input: `
+				var one = 1
+				one
+				`,
+			expectedConstants: []interface{}{1},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeGetGlobal, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input: `
+				var one = 1
+				var two = 2
+				`,
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeSetGlobal, 1),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input: `
+				var one = 1
+				var two = 2
+				two
+				`,
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeSetGlobal, 1),
+				GenerateByte(OpCodeGetGlobal, 1),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []CompilerTest) {
 	for _, tt := range tests {
 		fmt.Printf("--- %s ---\n", tt.input)

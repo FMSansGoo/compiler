@@ -34,6 +34,7 @@ func NewVM(bytecode *Bytecode) *VM {
 func (vm *VM) Run() error {
 	for vm.pa < len(vm.instructions) {
 		op := vm.instructions[vm.pa]
+		utils.LogInfo("op ", op)
 		opCode := GetOpCodeFromValue(op)
 		utils.LogInfo("opCode ", opCode)
 		switch opCode {
@@ -106,7 +107,19 @@ func (vm *VM) Run() error {
 		case OpCodeJump:
 			pos := int(ReadUint16(vm.instructions[vm.pa+1:]))
 			vm.pa = pos - 1
+		case OpCodeSetGlobal:
+			globalIndex := ReadUint16(vm.instructions[vm.pa+1:])
+			vm.pa += 2
 
+			vm.globals[globalIndex] = vm.pop()
+		case OpCodeGetGlobal:
+			globalIndex := ReadUint16(vm.instructions[vm.pa+1:])
+			vm.pa += 2
+
+			err := vm.push(vm.globals[globalIndex])
+			if err != nil {
+				return err
+			}
 		}
 		// 指针 + 1
 		vm.pa += 1
