@@ -151,12 +151,15 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 		if e.Value != actual.(*NumberObject).Value {
 			t.Errorf("object has wrong value. got=%v, want=%v", actual.(*NumberObject).Value, e.Value)
 		}
+	case *BoolObject:
+		if e.Value != actual.(*BoolObject).Value {
+			t.Errorf("object has wrong value. got=%v, want=%v", actual.(*NumberObject).Value, e.Value)
+		}
 	case *NullObject:
 		err := testNullObjectValue(e, actual)
 		if err != nil {
 			t.Errorf("testStringObject failed: %s", err)
 		}
-	//先暂时支持[]int，后续要支持 []string []bool 等
 	case []int:
 		array, ok := actual.(*ArrayObject)
 		if !ok {
@@ -217,7 +220,6 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 		for i, expectedElm := range e {
 			testExpectedObject(t, expectedElm, array.Values[i])
 		}
-
 	case map[Object]Object:
 		dict, ok := actual.(*DictObject)
 		if !ok {
