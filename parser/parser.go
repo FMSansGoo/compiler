@@ -1035,7 +1035,9 @@ func (this *SansLangParser) astParseArray() Node {
 		lb := this.Match(sansLexer.TokenTypeLBracket)
 		if !lb.Error() {
 			exp := this.astParseExpression()
-			exps = append(exps, exp)
+			if exp != nil {
+				exps = append(exps, exp)
+			}
 			for this.Expect(sansLexer.TokenTypeComma) {
 				comma := this.Match(sansLexer.TokenTypeComma)
 				if !comma.Error() {

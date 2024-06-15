@@ -92,6 +92,8 @@ var definitions = map[OpCode]*Definition{
 	OpCodeJumpNotTruthy: {OpCodeJumpNotTruthy.Name(), 2, 1},
 	OpCodeSetGlobal:     {OpCodeSetGlobal.Name(), 2, 1},
 	OpCodeGetGlobal:     {OpCodeGetGlobal.Name(), 2, 1},
+	OpCodeArray:         {OpCodeArray.Name(), 2, 1},
+	OpCodeDict:          {OpCodeDict.Name(), 2, 1},
 }
 
 //OpEqual:         {"OpEqual", []int{}},

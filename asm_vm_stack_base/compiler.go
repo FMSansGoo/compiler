@@ -151,6 +151,25 @@ func (c *Compiler) Compile(node parser.Node) {
 		if ok {
 			c.emit(OpCodeNull)
 		}
+	case parser.AstTypeStringLiteral.Name():
+		v := node.(parser.StringLiteral).Value
+		literal := &StringObject{Value: v}
+		c.emit(OpCodeConstant, c.addConstant(literal))
+	case parser.AstTypeArrayLiteral.Name():
+		vs := node.(parser.ArrayLiteral).Values
+		for _, v := range vs {
+			c.Compile(v)
+		}
+		c.emit(OpCodeArray, len(vs))
+	case parser.AstTypeDictLiteral.Name():
+		kvs := node.(parser.DictLiteral).Values
+		for _, kv := range kvs {
+			k := kv.(parser.PropertyAssignment).Key
+			v := kv.(parser.PropertyAssignment).Value
+			c.Compile(k)
+			c.Compile(v)
+		}
+		c.emit(OpCodeDict, len(kvs)*2)
 	default:
 		utils.LogError("unknown node type: %s", node.Type())
 	}

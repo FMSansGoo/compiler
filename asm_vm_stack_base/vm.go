@@ -120,12 +120,55 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case OpCodeArray:
+			numElements := int(ReadUint16(vm.instructions[vm.pa+1:]))
+			vm.pa += 2
+
+			array := vm.buildArray(vm.sp-numElements, vm.sp)
+			vm.sp = vm.sp - numElements
+
+			err := vm.push(array)
+			if err != nil {
+				return err
+			}
+		case OpCodeDict:
+			numElements := int(ReadUint16(vm.instructions[vm.pa+1:]))
+			vm.pa += 2
+
+			dict := vm.buildDict(vm.sp-numElements, vm.sp)
+			vm.sp = vm.sp - numElements
+			err := vm.push(dict)
+			if err != nil {
+				return err
+			}
 		}
 		// 指针 + 1
 		vm.pa += 1
 	}
 
 	return nil
+}
+
+func (vm *VM) buildArray(startIndex, endIndex int) Object {
+	elements := make([]Object, endIndex-startIndex)
+
+	for i := startIndex; i < endIndex; i++ {
+		elements[i-startIndex] = vm.stack[i]
+	}
+
+	return &ArrayObject{Values: elements}
+}
+
+func (vm *VM) buildDict(startIndex, endIndex int) Object {
+	dictPairs := make(map[Object]Object, 0)
+
+	for i := startIndex; i < endIndex; i += 2 {
+		key := vm.stack[i]
+		value := vm.stack[i+1]
+		dictPairs[key] = value
+	}
+
+	return &DictObject{Pairs: dictPairs}
 }
 
 func (vm *VM) executeComparison(op OpCode) error {
@@ -140,9 +183,9 @@ func (vm *VM) executeComparison(op OpCode) error {
 
 	switch op {
 	case OpCodeEquals:
-		return vm.push(&BoolObject{Value: right == left})
+		return vm.push(&BoolObject{Value: right.(*BoolObject).Value == left.(*BoolObject).Value})
 	case OpCodeNotEquals:
-		return vm.push(&BoolObject{Value: right != left})
+		return vm.push(&BoolObject{Value: right.(*BoolObject).Value != left.(*BoolObject).Value})
 	default:
 		return fmt.Errorf("unknown operator: %+v %s %s", op, left.ValueType(), right.ValueType())
 	}

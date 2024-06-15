@@ -184,7 +184,7 @@ func TestIf(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
-func TestGlobalLetStatements(t *testing.T) {
+func TestGlobalVarStatements(t *testing.T) {
 	tests := []CompilerTest{
 		{
 			input: `
@@ -226,6 +226,69 @@ func TestGlobalLetStatements(t *testing.T) {
 				GenerateByte(OpCodeConstant, 1),
 				GenerateByte(OpCodeSetGlobal, 1),
 				GenerateByte(OpCodeGetGlobal, 1),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
+func TestStringAndArrayAndObject(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input:             `"monkey"`,
+			expectedConstants: []interface{}{"monkey"},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             `"mon" + "key"`,
+			expectedConstants: []interface{}{"mon", "key"},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeAdd),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             `[]`,
+			expectedConstants: []interface{}{},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeArray, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             `[1,2]`,
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeArray, 2),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             `{}`,
+			expectedConstants: []interface{}{},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeDict, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             `{"0": 5 * 6}`,
+			expectedConstants: []interface{}{"0", 5, 6},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeConstant, 2),
+				GenerateByte(OpCodeMul),
+				GenerateByte(OpCodeDict, 2),
 				GenerateByte(OpCodePop),
 			},
 		},
@@ -292,7 +355,14 @@ func testIntegerObject(expected int64, actual Object) error {
 	if !ok {
 		return fmt.Errorf("object is not Integer. got=%T (%+v)", result.Value, expected)
 	}
+	return nil
+}
 
+func testNullObject(expected Object, actual Object) error {
+	result, ok := actual.(*NullObject)
+	if !ok {
+		return fmt.Errorf("object is not Integer. got=%T (%+v)", result, expected)
+	}
 	return nil
 }
 

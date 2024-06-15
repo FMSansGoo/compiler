@@ -28,6 +28,9 @@ var (
 
 	OpCodeSetGlobal = newOpCode("SetGlobal", 50)
 	OpCodeGetGlobal = newOpCode("GetGlobal", 51)
+
+	OpCodeArray = newOpCode("Array", 52)
+	OpCodeDict  = newOpCode("Dict", 53)
 )
 
 func newOpCode(name string, value int64) OpCode {

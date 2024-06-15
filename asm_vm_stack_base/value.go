@@ -34,3 +34,28 @@ type NullObject struct {
 func (b NullObject) ValueType() string {
 	return "NullObject"
 }
+
+type ArrayObject struct {
+	Values []Object `json:"values"`
+}
+
+func (b ArrayObject) ValueType() string {
+	return "ArrayObject"
+}
+
+//type DictKvObject struct {
+//	Key   Object
+//	Value Object
+//}
+//
+//func (b DictKvObject) ValueType() string {
+//	return "DictKvObject"
+//}
+
+type DictObject struct {
+	Pairs map[Object]Object `json:"values"`
+}
+
+func (b DictObject) ValueType() string {
+	return "HashObject"
+}
