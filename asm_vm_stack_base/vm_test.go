@@ -72,9 +72,10 @@ func TestStringExpressions(t *testing.T) {
 
 func TestArrayExpressions(t *testing.T) {
 	tests := []vmTestCase{
-		{"[]", []int{}},
+		{"[]", []any{}},
 		{"[1, 2, 3]", []int{1, 2, 3}},
 		{"[1 + 2, 3 * 4, 5 + 6]", []int{3, 12, 11}},
+		{`["fk"]`, []string{"fk"}},
 	}
 	runVmTests(t, tests)
 }
@@ -171,6 +172,52 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 		for i, expectedElm := range e {
 			testExpectedObject(t, expectedElm, array.Values[i])
 		}
+	case []bool:
+		array, ok := actual.(*ArrayObject)
+		if !ok {
+			t.Errorf("object not Array: %T (%+v)", actual, actual)
+			return
+		}
+
+		if len(array.Values) != len(e) {
+			t.Errorf("wrong num of elements. want=%d, got=%d", len(e), len(array.Values))
+			return
+		}
+
+		for i, expectedElm := range e {
+			testExpectedObject(t, expectedElm, array.Values[i])
+		}
+	case []string:
+		array, ok := actual.(*ArrayObject)
+		if !ok {
+			t.Errorf("object not Array: %T (%+v)", actual, actual)
+			return
+		}
+
+		if len(array.Values) != len(e) {
+			t.Errorf("wrong num of elements. want=%d, got=%d", len(e), len(array.Values))
+			return
+		}
+
+		for i, expectedElm := range e {
+			testExpectedObject(t, expectedElm, array.Values[i])
+		}
+	case []any:
+		array, ok := actual.(*ArrayObject)
+		if !ok {
+			t.Errorf("object not Array: %T (%+v)", actual, actual)
+			return
+		}
+
+		if len(array.Values) != len(e) {
+			t.Errorf("wrong num of elements. want=%d, got=%d", len(e), len(array.Values))
+			return
+		}
+
+		for i, expectedElm := range e {
+			testExpectedObject(t, expectedElm, array.Values[i])
+		}
+
 	case map[Object]Object:
 		dict, ok := actual.(*DictObject)
 		if !ok {
