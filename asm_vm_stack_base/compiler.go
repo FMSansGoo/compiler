@@ -170,9 +170,80 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.Compile(v)
 		}
 		c.emit(OpCodeDict, len(kvs)*2)
+	case parser.AstTypeFunctionExpression.Name():
+		utils.LogInfo("function in?")
+		c.enterScope()
+		functionNode := node.(parser.FunctionExpression)
+
+		for _, p := range functionNode.Params {
+			id := p.(parser.Identifier)
+			c.symbolTable.Define(id.Value)
+		}
+
+		c.Compile(functionNode.Body)
+
+		// 这里一定要 return 一个值
+		if c.lastInstructionIs(OpCodePop) {
+			c.replaceLastOpcode(OpCodeReturn)
+		}
+		if !c.lastInstructionIs(OpCodeReturn) {
+			c.emit(OpCodeReturn)
+		}
+
+		freeSymbols := c.symbolTable.FreeSymbols
+		numLocals := c.symbolTable.numDefinitions
+		instructions := c.leaveScope()
+
+		for _, s := range freeSymbols {
+			c.loadSymbol(s)
+		}
+
+		compiledFn := &CompiledFunctionObject{
+			Instructions:  instructions,
+			NumLocals:     numLocals,
+			NumParameters: len(functionNode.Params),
+		}
+
+		fnIndex := c.addConstant(compiledFn)
+		c.emit(OpCodeClosure, fnIndex, len(freeSymbols))
+
+	case parser.AstTypeReturnStatement.Name():
+		v := node.(parser.ReturnStatement).Value
+		if v != nil {
+			c.Compile(v)
+		}
+		c.emit(OpCodeReturn)
 	default:
 		utils.LogError("unknown node type: %s", node.Type())
 	}
+}
+
+func (c *Compiler) replaceLastOpcode(opcode OpCode) {
+	lastPos := c.scopes[c.scopeIndex].lastInstruction.Position
+	c.replaceInstruction(lastPos, GenerateByte(opcode))
+
+	c.scopes[c.scopeIndex].lastInstruction.Opcode = opcode
+}
+
+func (c *Compiler) enterScope() {
+	scope := CompilationScope{
+		instructions:        Instructions{},
+		lastInstruction:     EmittedInstruction{},
+		previousInstruction: EmittedInstruction{},
+	}
+	c.scopes = append(c.scopes, scope)
+	c.scopeIndex++
+	c.symbolTable = NewEnclosedSymbolTable(c.symbolTable)
+}
+
+func (c *Compiler) leaveScope() Instructions {
+	instructions := c.currentInstructions()
+
+	c.scopes = c.scopes[:len(c.scopes)-1]
+	c.scopeIndex--
+	c.symbolTable = c.symbolTable.Outer
+
+	return instructions
 }
 
 func (c *Compiler) emit(op OpCode, operands ...int) int {

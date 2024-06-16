@@ -94,6 +94,8 @@ var definitions = map[OpCode]*Definition{
 	OpCodeGetGlobal:     {OpCodeGetGlobal.Name(), 2, 1},
 	OpCodeArray:         {OpCodeArray.Name(), 2, 1},
 	OpCodeDict:          {OpCodeDict.Name(), 2, 1},
+	OpCodeReturn:        {OpCodeReturn.Name(), 2, 1},
+	OpCodeClosure:       {OpCodeClosure.Name(), 2, 2},
 }
 
 //OpEqual:         {"OpEqual", []int{}},

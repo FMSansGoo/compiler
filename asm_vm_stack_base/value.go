@@ -43,19 +43,20 @@ func (b ArrayObject) ValueType() string {
 	return "ArrayObject"
 }
 
-//type DictKvObject struct {
-//	Key   Object
-//	Value Object
-//}
-//
-//func (b DictKvObject) ValueType() string {
-//	return "DictKvObject"
-//}
-
 type DictObject struct {
 	Pairs map[Object]Object `json:"values"`
 }
 
 func (b DictObject) ValueType() string {
 	return "HashObject"
+}
+
+type CompiledFunctionObject struct {
+	Instructions  Instructions `json:"instructions"`
+	NumLocals     int          `json:"numLocals"`
+	NumParameters int          `json:"numParameters"`
+}
+
+func (b CompiledFunctionObject) ValueType() string {
+	return "CompiledFunctionObject"
 }

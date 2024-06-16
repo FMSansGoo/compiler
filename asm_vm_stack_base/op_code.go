@@ -31,6 +31,9 @@ var (
 
 	OpCodeArray = newOpCode("Array", 52)
 	OpCodeDict  = newOpCode("Dict", 53)
+
+	OpCodeReturn  = newOpCode("Return", 60)
+	OpCodeClosure = newOpCode("Closure", 61)
 )
 
 func newOpCode(name string, value int64) OpCode {

@@ -297,6 +297,32 @@ func TestStringAndArrayAndObject(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestFunction(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input: `function() { return 5 + 10 }`,
+			expectedConstants: []interface{}{
+				5,
+				10,
+				// 把整个函数当做常量来返回
+				[]Instructions{
+					GenerateByte(OpCodeConstant, 0),
+					GenerateByte(OpCodeConstant, 1),
+					GenerateByte(OpCodeAdd),
+					GenerateByte(OpCodeReturn),
+				},
+			},
+			expectedInstructions: []Instructions{
+				//GenerateByte(OpCodeConstant, 2),
+				GenerateByte(OpCodeClosure, 2, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []CompilerTest) {
 	for _, tt := range tests {
 		fmt.Printf("--- %s ---\n", tt.input)

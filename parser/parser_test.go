@@ -8,7 +8,7 @@ import (
 
 func TestNewBaseParser(t *testing.T) {
 	//基本类型
-	testParser1()
+	//testParser1()
 	//多重运算
 	//testParser2()
 	//for 循环 while 循环 if else
@@ -17,6 +17,8 @@ func TestNewBaseParser(t *testing.T) {
 	//testParser4()
 	//// 类
 	//testParser5()
+	// 额外的扩充
+	testParser6()
 }
 
 func testParser1() {
@@ -155,6 +157,28 @@ func testParser5() {
 		}
 		var a = A.new()
 		var b = a.fuck()
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := sansLexer.TokenList{
+		Tokens: tokenList,
+	}
+	for _, token := range tokensLexer.Tokens {
+		fmt.Printf("token %+v\n", token)
+	}
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	fmt.Println("====================== parser end =======================")
+}
+
+func testParser6() {
+	lexer := sansLexer.SansLangLexer{}
+	lexer.Code = `
+		function() { return 5 + 10 }
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()
