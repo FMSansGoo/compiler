@@ -179,8 +179,13 @@ func (c *Compiler) Compile(node parser.Node) {
 			id := p.(parser.Identifier)
 			c.symbolTable.Define(id.Value)
 		}
-
+		// 这里能做处理，假设 body 没有数据，直接加上一个 null
 		c.Compile(functionNode.Body)
+		body := functionNode.Body
+		bs := body.(parser.BlockStatement).Body
+		if len(bs) == 0 {
+			c.emit(OpCodeNull)
+		}
 
 		// 这里一定要 return 一个值
 		if c.lastInstructionIs(OpCodePop) {
@@ -190,8 +195,8 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.emit(OpCodeReturn)
 		}
 
-		freeSymbols := c.symbolTable.FreeSymbols
 		numLocals := c.symbolTable.numDefinitions
+		freeSymbols := c.symbolTable.FreeSymbols
 		instructions := c.leaveScope()
 
 		for _, s := range freeSymbols {
@@ -205,7 +210,17 @@ func (c *Compiler) Compile(node parser.Node) {
 		}
 
 		fnIndex := c.addConstant(compiledFn)
+		// 闭包，函数在常量池的索引，函数内部有多少个作用域
 		c.emit(OpCodeClosure, fnIndex, len(freeSymbols))
+	case parser.AstTypeCallExpression.Name():
+		n := node.(parser.CallExpression)
+
+		c.Compile(n.Object)
+
+		for _, arg := range n.Args {
+			c.Compile(arg)
+		}
+		c.emit(OpCodeFunctionCall, len(n.Args))
 
 	case parser.AstTypeReturnStatement.Name():
 		v := node.(parser.ReturnStatement).Value

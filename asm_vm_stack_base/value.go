@@ -60,3 +60,12 @@ type CompiledFunctionObject struct {
 func (b CompiledFunctionObject) ValueType() string {
 	return "CompiledFunctionObject"
 }
+
+type ClosureObject struct {
+	Fn   *CompiledFunctionObject
+	Free []Object
+}
+
+func (b ClosureObject) ValueType() string {
+	return "ClosureObject"
+}

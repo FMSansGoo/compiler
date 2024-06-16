@@ -94,6 +94,27 @@ func TestObjectLiterals(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestCallingFunctionsWithoutArguments(t *testing.T) {
+	tests := []vmTestCase{
+		//{
+		//	input: `
+		//	const test = function() { 1 }
+		//	test()
+		//	`,
+		//	expected: 1,
+		//},
+		{
+			input: `
+			const test = function() { }
+			test()
+			`,
+			expected: nil,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	t.Helper()
 
@@ -249,6 +270,11 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 		for i, value := range expectedValues {
 			actualValue := actualValues[i]
 			testExpectedObject(t, value, actualValue)
+		}
+	case nil:
+		result, ok := actual.(*NullObject)
+		if !ok {
+			t.Errorf("object is not Integer. got=%T (%+v)", result, expected)
 		}
 	default:
 		t.Errorf("expected:%v ", e)

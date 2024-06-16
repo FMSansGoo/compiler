@@ -94,8 +94,9 @@ var definitions = map[OpCode]*Definition{
 	OpCodeGetGlobal:     {OpCodeGetGlobal.Name(), 2, 1},
 	OpCodeArray:         {OpCodeArray.Name(), 2, 1},
 	OpCodeDict:          {OpCodeDict.Name(), 2, 1},
-	OpCodeReturn:        {OpCodeReturn.Name(), 2, 1},
+	OpCodeReturn:        {OpCodeReturn.Name(), 0, 0},
 	OpCodeClosure:       {OpCodeClosure.Name(), 2, 2},
+	OpCodeFunctionCall:  {OpCodeFunctionCall.Name(), 2, 1},
 }
 
 //OpEqual:         {"OpEqual", []int{}},
@@ -148,4 +149,8 @@ func GenerateByte(op OpCode, operands ...int) []byte {
 
 func ReadUint16(ins Instructions) uint16 {
 	return binary.BigEndian.Uint16(ins)
+}
+
+func ReadUint8(ins Instructions) uint8 {
+	return uint8(ins[0])
 }

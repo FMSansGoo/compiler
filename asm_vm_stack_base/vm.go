@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	FrameSize  = 1024
 	StackSize  = 1024
 	GlobalSize = 65536
 )
@@ -16,31 +17,68 @@ type VM struct {
 	//The stack pointer
 	sp           int // Always points to the next value. Top of stack is stack[sp-1]
 	globals      []Object
-	pa           int // 暂时的计数器寄存器
 	instructions Instructions
+
+	//  存储栈帧数据
+	frames      []*Frame
+	framesIndex int
 }
 
 func NewVM(bytecode *Bytecode) *VM {
+
+	// 把 global 外层当做一个主函数来执行
+	globalFn := &CompiledFunctionObject{Instructions: bytecode.Instructions}
+	globalClosure := &ClosureObject{Fn: globalFn}
+	globalFrame := NewFrame(globalClosure, 0)
+
+	frames := make([]*Frame, FrameSize)
+	frames[0] = globalFrame
+
 	return &VM{
 		instructions: bytecode.Instructions,
 		constants:    bytecode.Constants,
 		stack:        make([]Object, StackSize),
 		sp:           0,
 		globals:      make([]Object, GlobalSize),
-		pa:           0,
+
+		frames:      frames,
+		framesIndex: 1,
 	}
 }
 
+func (vm *VM) currentFrame() *Frame {
+	return vm.frames[vm.framesIndex-1]
+}
+
+func (vm *VM) pushFrame(f *Frame) {
+	if vm.framesIndex > FrameSize {
+		utils.LogError("program make function over size")
+	}
+	vm.frames[vm.framesIndex] = f
+	vm.framesIndex++
+}
+
+func (vm *VM) popFrame() *Frame {
+	vm.framesIndex--
+	return vm.frames[vm.framesIndex]
+}
+
 func (vm *VM) Run() error {
-	for vm.pa < len(vm.instructions) {
-		op := vm.instructions[vm.pa]
+	for vm.currentFrame().ip < len(vm.currentFrame().Instructions())-1 {
+		vm.currentFrame().ip += 1
+
+		ip := vm.currentFrame().ip
+		ins := vm.currentFrame().Instructions()
+
+		op := ins[ip]
 		utils.LogInfo("op ", op)
 		opCode := GetOpCodeFromValue(op)
 		utils.LogInfo("opCode ", opCode)
 		switch opCode {
 		case OpCodeConstant:
-			constIndex := ReadUint16(vm.instructions[vm.pa+1:])
-			vm.pa += 2
+			constIndex := ReadUint16(ins[ip+1:])
+			vm.currentFrame().ip += 2
+
 			err := vm.push(vm.constants[constIndex])
 			if err != nil {
 				return err
@@ -97,32 +135,32 @@ func (vm *VM) Run() error {
 			}
 		case OpCodeJumpNotTruthy:
 			// 这里塞入真实的地址
-			pos := int(ReadUint16(vm.instructions[vm.pa+1:]))
-			vm.pa += 2
+			pos := int(ReadUint16(ins[ip+1:]))
+			vm.currentFrame().ip += 2
 
 			condition := vm.pop()
 			if !isTruthy(condition) {
-				vm.pa = pos - 1
+				vm.currentFrame().ip = pos - 1
 			}
 		case OpCodeJump:
-			pos := int(ReadUint16(vm.instructions[vm.pa+1:]))
-			vm.pa = pos - 1
+			pos := int(ReadUint16(ins[ip+1:]))
+			vm.currentFrame().ip = pos - 1
 		case OpCodeSetGlobal:
-			globalIndex := ReadUint16(vm.instructions[vm.pa+1:])
-			vm.pa += 2
+			globalIndex := ReadUint16(ins[ip+1:])
+			vm.currentFrame().ip += 2
 
 			vm.globals[globalIndex] = vm.pop()
 		case OpCodeGetGlobal:
-			globalIndex := ReadUint16(vm.instructions[vm.pa+1:])
-			vm.pa += 2
+			globalIndex := ReadUint16(ins[ip+1:])
+			vm.currentFrame().ip += 2
 
 			err := vm.push(vm.globals[globalIndex])
 			if err != nil {
 				return err
 			}
 		case OpCodeArray:
-			numElements := int(ReadUint16(vm.instructions[vm.pa+1:]))
-			vm.pa += 2
+			numElements := int(ReadUint16(ins[ip+1:]))
+			vm.currentFrame().ip += 2
 
 			array := vm.buildArray(vm.sp-numElements, vm.sp)
 			vm.sp = vm.sp - numElements
@@ -132,8 +170,8 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case OpCodeDict:
-			numElements := int(ReadUint16(vm.instructions[vm.pa+1:]))
-			vm.pa += 2
+			numElements := int(ReadUint16(ins[ip+1:]))
+			vm.currentFrame().ip += 2
 
 			dict := vm.buildDict(vm.sp-numElements, vm.sp)
 			vm.sp = vm.sp - numElements
@@ -141,9 +179,44 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case OpCodeClosure:
+			utils.LogInfo("in OpCodeClosure")
+			// 已编译函数在常量池中的索引
+			constIndex := int(ReadUint16(ins[ip+1:]))
+			//utils.LogInfo("in constIndex,", constIndex)
+			// 在栈中等待的自由变量的数量
+			numFree := int(ReadUint16(ins[ip+3:]))
+			//utils.LogInfo("in numFree,", numFree)
+			vm.currentFrame().ip += 4
+			//
+			err := vm.pushFunctionClosure(int(constIndex), int(numFree))
+			if err != nil {
+				return err
+			}
+		case OpCodeFunctionCall:
+			utils.LogInfo("in OpCodeFunctionCall")
+			numArgs := int(ReadUint16(ins[ip+1:]))
+			//utils.LogInfo("in numArgs", numArgs)
+			vm.currentFrame().ip += 2
+
+			err := vm.executeFunctionCall(int(numArgs))
+			if err != nil {
+				return err
+			}
+
+		case OpCodeReturn:
+			utils.LogInfo("in OpCodeReturn", vm.sp, vm.stack[vm.sp-1])
+			// 这里可以处理一下，return 看看有没有值
+			returnValue := vm.pop()
+
+			frame := vm.popFrame()
+			vm.sp = frame.basePointer - 1
+
+			err := vm.push(returnValue)
+			if err != nil {
+				return err
+			}
 		}
-		// 指针 + 1
-		vm.pa += 1
 	}
 
 	return nil
@@ -169,6 +242,31 @@ func (vm *VM) buildDict(startIndex, endIndex int) Object {
 	}
 
 	return &DictObject{Pairs: dictPairs}
+}
+
+func (vm *VM) executeFunctionCall(numArgs int) error {
+	callee := vm.stack[vm.sp-1-numArgs]
+	switch callee := callee.(type) {
+	case *ClosureObject:
+		return vm.callFunctionClosure(callee, numArgs)
+	default:
+		return fmt.Errorf("calling non-function and non-built-in")
+	}
+}
+
+func (vm *VM) callFunctionClosure(cl *ClosureObject, numArgs int) error {
+	if numArgs != cl.Fn.NumParameters {
+		utils.LogError("callFunctionClosure", fmt.Sprintf("wrong number of arguments: want=%d, got=%d", cl.Fn.NumParameters, numArgs))
+		return fmt.Errorf("wrong number of arguments: want=%d, got=%d",
+			cl.Fn.NumParameters, numArgs)
+	}
+
+	frame := NewFrame(cl, vm.sp-numArgs)
+	vm.pushFrame(frame)
+
+	vm.sp = frame.basePointer + cl.Fn.NumLocals
+
+	return nil
 }
 
 func (vm *VM) executeComparison(op OpCode) error {
@@ -248,6 +346,7 @@ func (vm *VM) executeBinaryIntegerOperation(op OpCode, left, right Object) error
 
 	return vm.push(&NumberObject{Value: result})
 }
+
 func (vm *VM) executeBinaryStringOperation(op OpCode, left, right Object) error {
 	if op != OpCodeAdd {
 		return fmt.Errorf("unknown string operator: %+v", op)
@@ -268,6 +367,23 @@ func (vm *VM) push(o Object) error {
 	vm.sp++
 
 	return nil
+}
+
+func (vm *VM) pushFunctionClosure(constIndex, numFree int) error {
+	constant := vm.constants[constIndex]
+	function, ok := constant.(*CompiledFunctionObject)
+	if !ok {
+		return fmt.Errorf("not a function: %+v", constant)
+	}
+
+	free := make([]Object, numFree)
+	for i := 0; i < numFree; i++ {
+		free[i] = vm.stack[vm.sp-numFree+i]
+	}
+	vm.sp = vm.sp - numFree
+
+	closure := &ClosureObject{Fn: function, Free: free}
+	return vm.push(closure)
 }
 
 func (vm *VM) pop() Object {

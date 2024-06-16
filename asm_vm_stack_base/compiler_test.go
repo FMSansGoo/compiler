@@ -297,7 +297,7 @@ func TestStringAndArrayAndObject(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
-func TestFunction(t *testing.T) {
+func TestLambdaFunction(t *testing.T) {
 	tests := []CompilerTest{
 		{
 			input: `function() { return 5 + 10 }`,
@@ -318,8 +318,78 @@ func TestFunction(t *testing.T) {
 				GenerateByte(OpCodePop),
 			},
 		},
+		{
+			input: `function() {  5 + 10 }`,
+			expectedConstants: []interface{}{
+				5,
+				10,
+				// 把整个函数当做常量来返回
+				[]Instructions{
+					GenerateByte(OpCodeConstant, 0),
+					GenerateByte(OpCodeConstant, 1),
+					GenerateByte(OpCodeAdd),
+					GenerateByte(OpCodeReturn),
+				},
+			},
+			expectedInstructions: []Instructions{
+				//GenerateByte(OpCodeConstant, 2),
+				GenerateByte(OpCodeClosure, 2, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
 	}
+	runCompilerTests(t, tests)
+}
 
+func TestFunction(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			// 无参数函数
+			input: `
+				const fuck = function() {
+					return 1
+				}
+				fuck()
+			`,
+			expectedConstants: []interface{}{
+				1,
+				// 把整个函数当做常量来返回
+				[]Instructions{
+					GenerateByte(OpCodeConstant, 0),
+					GenerateByte(OpCodeReturn),
+				},
+			},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeClosure, 1, 0),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeGetGlobal, 0),
+				GenerateByte(OpCodeFunctionCall, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			// 无参数函数
+			input: `
+				const fuck = function() { 
+				}
+				fuck()
+			`,
+			expectedConstants: []interface{}{
+				// 把整个函数当做常量来返回
+				[]Instructions{
+					GenerateByte(OpCodeNull),
+					GenerateByte(OpCodeReturn),
+				},
+			},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeClosure, 0, 0),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeGetGlobal, 0),
+				GenerateByte(OpCodeFunctionCall, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
 	runCompilerTests(t, tests)
 }
 
