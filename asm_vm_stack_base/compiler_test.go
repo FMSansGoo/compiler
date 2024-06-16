@@ -389,6 +389,48 @@ func TestFunction(t *testing.T) {
 				GenerateByte(OpCodePop),
 			},
 		},
+		{
+			input: `
+			const oneArg = function(a) { }
+			oneArg(24)
+			`,
+			expectedConstants: []interface{}{
+				[]Instructions{
+					GenerateByte(OpCodeNull),
+					GenerateByte(OpCodeReturn),
+				},
+				24,
+			},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeClosure, 0, 0),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeGetGlobal, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeFunctionCall, 1),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input: `
+			function() { 
+				var num = 55
+				return num
+			}
+			`,
+			expectedConstants: []interface{}{
+				55,
+				[]Instructions{
+					GenerateByte(OpCodeConstant, 0),
+					GenerateByte(OpCodeSetLocal, 0),
+					GenerateByte(OpCodeGetLocal, 0),
+					GenerateByte(OpCodeReturn),
+				},
+			},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeClosure, 1, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
 	}
 	runCompilerTests(t, tests)
 }

@@ -64,6 +64,8 @@ func (c *Compiler) Compile(node parser.Node) {
 
 		if symbol.Scope == GlobalScope {
 			c.emit(OpCodeSetGlobal, symbol.Index)
+		} else {
+			c.emit(OpCodeSetLocal, symbol.Index)
 		}
 	case parser.AstTypeIdentifier.Name():
 		n := node.(parser.Identifier)
@@ -349,8 +351,8 @@ func (c *Compiler) loadSymbol(s Symbol) {
 	switch s.Scope {
 	case GlobalScope:
 		c.emit(OpCodeGetGlobal, s.Index)
-		//case LocalScope:
-		//	c.emit(code.OpGetLocal, s.Index)
+	case LocalScope:
+		c.emit(OpCodeGetLocal, s.Index)
 		//case BuiltinScope:
 		//	c.emit(code.OpGetBuiltin, s.Index)
 		//case FreeScope:

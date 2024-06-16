@@ -28,9 +28,11 @@ var (
 
 	OpCodeSetGlobal = newOpCode("SetGlobal", 50)
 	OpCodeGetGlobal = newOpCode("GetGlobal", 51)
+	OpCodeSetLocal  = newOpCode("SetLocal", 52)
+	OpCodeGetLocal  = newOpCode("GetLocal", 53)
 
-	OpCodeArray = newOpCode("Array", 52)
-	OpCodeDict  = newOpCode("Dict", 53)
+	OpCodeArray = newOpCode("Array", 54)
+	OpCodeDict  = newOpCode("Dict", 55)
 
 	OpCodeReturn       = newOpCode("Return", 60)
 	OpCodeClosure      = newOpCode("Closure", 61)

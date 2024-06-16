@@ -110,6 +110,101 @@ func TestCallingFunctionsWithoutArguments(t *testing.T) {
 			`,
 			expected: nil,
 		},
+		{
+			input: `
+		const a = function() { 1 }
+		const b = function() { a() + 1 } 
+		const c = function() { b() + 1 }
+		c()
+			`,
+			expected: 3,
+		},
+		{
+			input: `
+		const a = function() { 1 }
+		const b = function() { return a  } 
+		b()()
+			`,
+			expected: 1,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
+func TestCallingFunctionsReturn(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			input: `
+			const test = function() { 1 }
+			test()
+			`,
+			expected: 1,
+		},
+		{
+			input: `
+			const test = function() { }
+			test()
+			`,
+			expected: nil,
+		},
+		{
+			input: `
+		const a = function() { 1 }
+		const b = function() { a() + 1 } 
+		const c = function() { b() + 1 }
+		c()
+			`,
+			expected: 3,
+		},
+		{
+			input: `
+		const a = function() { 1 }
+		const b = function() { return a  } 
+		b()()
+			`,
+			expected: 1,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
+func TestCallingFunctionsLocal(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			input: `
+			const a = function() { 
+				var num = 55
+				return num
+			}
+			a()
+			`,
+			expected: 55,
+		},
+		{
+			input: `
+			const firstFoobar = function() { var foobar = 50 return foobar }
+			const secondFoobar = function() { var foobar = 100 return foobar }
+			firstFoobar() + secondFoobar()
+			`,
+			expected: 150,
+		},
+		{
+			input: `
+			var globalSeed = 50
+			const minusOne = function() {
+				var num = 1
+				globalSeed - num
+			}
+			const minusTwo = function() {
+				var num = 2
+				globalSeed - num
+			}
+			minusOne() + minusTwo()
+			`,
+			expected: 97,
+		},
 	}
 
 	runVmTests(t, tests)

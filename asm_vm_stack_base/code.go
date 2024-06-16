@@ -90,13 +90,18 @@ var definitions = map[OpCode]*Definition{
 	OpCodeMinus:         {OpCodeMinus.Name(), 0, 0},
 	OpCodeJump:          {OpCodeJump.Name(), 2, 1},
 	OpCodeJumpNotTruthy: {OpCodeJumpNotTruthy.Name(), 2, 1},
-	OpCodeSetGlobal:     {OpCodeSetGlobal.Name(), 2, 1},
-	OpCodeGetGlobal:     {OpCodeGetGlobal.Name(), 2, 1},
-	OpCodeArray:         {OpCodeArray.Name(), 2, 1},
-	OpCodeDict:          {OpCodeDict.Name(), 2, 1},
-	OpCodeReturn:        {OpCodeReturn.Name(), 0, 0},
-	OpCodeClosure:       {OpCodeClosure.Name(), 2, 2},
-	OpCodeFunctionCall:  {OpCodeFunctionCall.Name(), 2, 1},
+	// 全局变量能占有 65536 字节
+	OpCodeSetGlobal: {OpCodeSetGlobal.Name(), 2, 1},
+	OpCodeGetGlobal: {OpCodeGetGlobal.Name(), 2, 1},
+	// 局部变量占有 256 字节就行
+	OpCodeSetLocal: {OpCodeSetLocal.Name(), 1, 1},
+	OpCodeGetLocal: {OpCodeGetLocal.Name(), 1, 1},
+	//
+	OpCodeArray:        {OpCodeArray.Name(), 2, 1},
+	OpCodeDict:         {OpCodeDict.Name(), 2, 1},
+	OpCodeReturn:       {OpCodeReturn.Name(), 0, 0},
+	OpCodeClosure:      {OpCodeClosure.Name(), 2, 2},
+	OpCodeFunctionCall: {OpCodeFunctionCall.Name(), 2, 1},
 }
 
 //OpEqual:         {"OpEqual", []int{}},

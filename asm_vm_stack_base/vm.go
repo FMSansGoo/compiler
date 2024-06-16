@@ -158,6 +158,23 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case OpCodeSetLocal:
+			localIndex := ReadUint8(ins[ip+1:])
+			vm.currentFrame().ip += 1
+
+			frame := vm.currentFrame()
+
+			vm.stack[frame.basePointer+int(localIndex)] = vm.pop()
+		case OpCodeGetLocal:
+			localIndex := ReadUint8(ins[ip+1:])
+			vm.currentFrame().ip += 1
+
+			frame := vm.currentFrame()
+
+			err := vm.push(vm.stack[frame.basePointer+int(localIndex)])
+			if err != nil {
+				return err
+			}
 		case OpCodeArray:
 			numElements := int(ReadUint16(ins[ip+1:]))
 			vm.currentFrame().ip += 2
