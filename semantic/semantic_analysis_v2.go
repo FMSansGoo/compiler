@@ -958,19 +958,31 @@ func (this *SemanticAnalysisV2) visitCallExpression(node parser.Node) (AllType, 
 	if node.Type() != parser.AstTypeCallExpression.Name() {
 		return UnKnownType{}, ""
 	}
-	if node.(parser.CallExpression).Object.Type() == parser.AstTypeMemberExpression.Name() {
-		return this.visitMemberExpression(node.(parser.CallExpression).Object)
-	} else if node.(parser.CallExpression).Object.Type() == parser.AstTypeIdentifier.Name() {
 
-		valueType, variableName, _ := this.visitIdentifier(node.(parser.CallExpression).Object)
+	n := node.(parser.CallExpression)
+
+	if n.Object.Type() == parser.AstTypeMemberExpression.Name() {
+		return this.visitMemberExpression(node.(parser.CallExpression).Object)
+	} else if n.Object.Type() == parser.AstTypeIdentifier.Name() {
+
+		valueType, variableName, _ := this.visitIdentifier(n.Object)
+
 		// 如果是函数就是直接调用它返回值
 		functionValueType := FunctionType{}
 		if valueType.ValueType() == functionValueType.ValueType() {
-			return valueType.(FunctionType).ReturnType, variableName
+			fn := valueType.(FunctionType)
+			// 这里要检查
+			// 1. 参数个数
+			// todo 2. 参数类型
+			if len(fn.Params) != len(n.Args) {
+				utils.LogError("call expression param number error", len(fn.Params), len(n.Args))
+			}
+
+			return fn.ReturnType, variableName
 		}
 		return valueType, variableName
 	}
-	utils.LogInfo("visitCallExpression", node.(parser.CallExpression).Object.Type())
+	utils.LogInfo("visitCallExpression", n.Object.Type())
 	return UnKnownType{}, ""
 }
 

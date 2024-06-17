@@ -205,6 +205,42 @@ func TestCallingFunctionsLocal(t *testing.T) {
 			`,
 			expected: 97,
 		},
+		{
+			input: ` 
+		const returnsOneReturner = function() { 
+			const returnsOne = function() { 
+				return 1 
+			}
+			returnsOne 
+		}
+		returnsOneReturner()()
+		`,
+			expected: 1,
+		},
+		{
+			input: ` 
+		 const identity = function(a) { a }
+		 identity(4)
+		`,
+			expected: 4,
+		},
+		{
+			input: ` 
+		 const sum = function(a, b) { return a + b }
+		 sum(1,2)
+		`,
+			expected: 3,
+		},
+		{
+			input: ` 
+		 const sum = function(a, b) { return a + b }
+		 const outer = function() { 
+		 	sum(1, 2) + sum(3, 4)
+		 }
+		 outer()
+		`,
+			expected: 10,
+		},
 	}
 
 	runVmTests(t, tests)

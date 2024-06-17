@@ -18,7 +18,7 @@ func TestSemanticAnalysisV2(t *testing.T) {
 	//testSemanticAnalysis3_2()
 	//testSemanticAnalysis3_3()
 	////函数
-	//testSemanticAnalysis4_1()
+	testSemanticAnalysis4_1()
 	//类
 	//testSemanticAnalysis5_1()
 	//testSemanticAnalysis5_2()
@@ -219,7 +219,6 @@ func testSemanticAnalysis3_3() {
 
 func testSemanticAnalysis4_1() {
 	lexer := lexer2.SansLangLexer{}
-	// todo 还需要做一下传参的检测
 	lexer.Code = `
 		const log = function(a) {
 			return a
