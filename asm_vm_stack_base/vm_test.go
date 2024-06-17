@@ -258,6 +258,38 @@ func TestClosureCall(t *testing.T) {
 			`,
 			expected: 99,
 		},
+		{
+			input: `
+		const newClosure = function(a, b) {
+			const one = function() { a  } 
+			const two = function() { b  } 
+			function() { one() + two()  } 
+		} 
+		const closure = newClosure(9, 90)
+		closure()
+		`,
+			expected: 99,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
+func TestRecursiveFibonacci(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			input: `
+		 const countDown = function(x) { 
+			 if (x == 0) { 
+				return 0 
+			 } else { 
+				countDown(x - 1) 
+			 } 
+		 } 
+		 countDown(1)
+		`,
+			expected: 0,
+		},
 	}
 
 	runVmTests(t, tests)
