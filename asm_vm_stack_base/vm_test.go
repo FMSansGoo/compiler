@@ -246,6 +246,23 @@ func TestCallingFunctionsLocal(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestClosureCall(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			input: `
+			const newClosure = function(a) {
+				return function() { a }
+			}
+			const closure = newClosure(99)
+			closure()
+			`,
+			expected: 99,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	t.Helper()
 

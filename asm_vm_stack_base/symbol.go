@@ -49,12 +49,7 @@ func (s *SymbolTable) Define(name string) Symbol {
 	return symbol
 }
 
-func (s *SymbolTable) DefineBuiltin(index int, name string) Symbol {
-	symbol := Symbol{Name: name, Index: index, Scope: BuiltinScope}
-	s.store[name] = symbol
-	return symbol
-}
-
+// 闭包在这里处理，要关注一下
 func (s *SymbolTable) Resolve(name string) (Symbol, bool) {
 	obj, ok := s.store[name]
 	if !ok && s.Outer != nil {
@@ -63,7 +58,7 @@ func (s *SymbolTable) Resolve(name string) (Symbol, bool) {
 			return obj, ok
 		}
 
-		if obj.Scope == GlobalScope || obj.Scope == BuiltinScope {
+		if obj.Scope == GlobalScope {
 			return obj, ok
 		}
 

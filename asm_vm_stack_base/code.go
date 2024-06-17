@@ -97,16 +97,15 @@ var definitions = map[OpCode]*Definition{
 	OpCodeSetLocal: {OpCodeSetLocal.Name(), 1, 1},
 	OpCodeGetLocal: {OpCodeGetLocal.Name(), 1, 1},
 	//
-	OpCodeArray:        {OpCodeArray.Name(), 2, 1},
-	OpCodeDict:         {OpCodeDict.Name(), 2, 1},
-	OpCodeReturn:       {OpCodeReturn.Name(), 0, 0},
+	OpCodeArray:  {OpCodeArray.Name(), 2, 1},
+	OpCodeDict:   {OpCodeDict.Name(), 2, 1},
+	OpCodeReturn: {OpCodeReturn.Name(), 0, 0},
+	// closure，第一个数函数在常量池的索引，第二个数用于指定栈中有多少自由变量需要转移到即将创建的闭包中
 	OpCodeClosure:      {OpCodeClosure.Name(), 2, 2},
 	OpCodeFunctionCall: {OpCodeFunctionCall.Name(), 2, 1},
+	// 获取自由变量
+	OpCodeGetFree: {OpCodeGetFree.Name(), 1, 1},
 }
-
-//OpEqual:         {"OpEqual", []int{}},
-//OpNotEqual:      {"OpNotEqual", []int{}},
-//OpGreaterThan:   {"OpGreaterThan", []int{}},
 
 func Lookup(op string) (*Definition, error) {
 	opCode := GetOpCodeFromName(op)

@@ -435,6 +435,39 @@ func TestFunction(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestClosure(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			// 无参数函数
+			input: `
+			function(a) {
+				function(b) {
+					return a + b
+				}
+			}
+			`,
+			expectedConstants: []interface{}{
+				[]Instructions{
+					GenerateByte(OpCodeGetFree, 0),
+					GenerateByte(OpCodeGetLocal, 0),
+					GenerateByte(OpCodeAdd),
+					GenerateByte(OpCodeReturn),
+				},
+				[]Instructions{
+					GenerateByte(OpCodeGetLocal, 0),
+					GenerateByte(OpCodeClosure, 0, 1),
+					GenerateByte(OpCodeReturn),
+				},
+			},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeClosure, 1, 0),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []CompilerTest) {
 	for _, tt := range tests {
 		fmt.Printf("--- %s ---\n", tt.input)

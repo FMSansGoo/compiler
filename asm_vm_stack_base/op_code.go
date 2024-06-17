@@ -37,6 +37,8 @@ var (
 	OpCodeReturn       = newOpCode("Return", 60)
 	OpCodeClosure      = newOpCode("Closure", 61)
 	OpCodeFunctionCall = newOpCode("FunctionCall", 62)
+	// 获取不受作用域约束的变量指令，这玩意儿术语叫自由变量
+	OpCodeGetFree = newOpCode("GetFree", 63)
 )
 
 func newOpCode(name string, value int64) OpCode {

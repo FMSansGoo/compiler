@@ -212,7 +212,7 @@ func (c *Compiler) Compile(node parser.Node) {
 		}
 
 		fnIndex := c.addConstant(compiledFn)
-		// 闭包，函数在常量池的索引，函数内部有多少个作用域
+		// 闭包，第一个数函数在常量池的索引，第二个数用于指定栈中有多少自由变量需要转移到即将创建的闭包中
 		c.emit(OpCodeClosure, fnIndex, len(freeSymbols))
 	case parser.AstTypeCallExpression.Name():
 		n := node.(parser.CallExpression)
@@ -353,9 +353,7 @@ func (c *Compiler) loadSymbol(s Symbol) {
 		c.emit(OpCodeGetGlobal, s.Index)
 	case LocalScope:
 		c.emit(OpCodeGetLocal, s.Index)
-		//case BuiltinScope:
-		//	c.emit(code.OpGetBuiltin, s.Index)
-		//case FreeScope:
-		//	c.emit(code.OpGetFree, s.Index)
+	case FreeScope:
+		c.emit(OpCodeGetFree, s.Index)
 	}
 }
