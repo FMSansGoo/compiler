@@ -185,8 +185,26 @@ func (this *SansLangParser) astParseStatement() Node {
 	return nil
 }
 
-func (this *SansLangParser) astParseAssignment() Node {
+func (this *SansLangParser) astParseDictKey() Node {
 	key := this.astParseString()
+	if key != nil {
+		return key
+	}
+
+	key = this.astParseNumber()
+	if key != nil {
+		return key
+	}
+
+	key = this.astParseIdentifier()
+	if key != nil {
+		return key
+	}
+	return nil
+}
+
+func (this *SansLangParser) astParseAssignment() Node {
+	key := this.astParseDictKey()
 	if key != nil && this.Expect(sansLexer.TokenTypeColon) {
 		value := this.Match(sansLexer.TokenTypeColon)
 		if !value.Error() {
@@ -551,7 +569,7 @@ func (this *SansLangParser) astParseCallMemberExpression() Node {
 				node := MemberExpression{
 					Object:      subAst,
 					Property:    prop,
-					ElementType: "array",
+					ElementType: "array_dict",
 				}
 				return this.astParseCallMemberExpressionTail(node)
 			}
@@ -559,96 +577,6 @@ func (this *SansLangParser) astParseCallMemberExpression() Node {
 	}
 	this.Reset(mark)
 	return subAst
-}
-
-func (this *SansLangParser) astParseCallClassMemberExpression() Node {
-	// factor arguments callMemberExpressionTail
-	// factor '.' identifier callMemberExpressionTail;
-	// factor '[' expression ']' callMemberExpressionTail
-	subAst := this.astParseFactor()
-	mark := this.Mark()
-	if subAst != nil {
-		args := this.astParseArgsWithParen()
-		if args != nil {
-			n := CallExpression{Object: subAst, Args: args}
-			node := this.astParseCallClassMemberExpressionTail(n)
-			return node
-		}
-		// 点语法
-		if this.Expect(sansLexer.TokenTypeDot) {
-			this.Match(sansLexer.TokenTypeDot)
-			prop := this.astParseIdentifier()
-			if prop != nil {
-				node := MemberExpression{
-					Object:      subAst,
-					Property:    prop,
-					ElementType: "dot",
-				}
-				return this.astParseCallClassMemberExpressionTail(node)
-			}
-		}
-		this.Reset(mark)
-		// 数组
-		if this.Expect(sansLexer.TokenTypeLBracket) {
-			this.Match(sansLexer.TokenTypeLBracket)
-			prop := this.astParseExpression()
-			if prop != nil {
-				this.Match(sansLexer.TokenTypeRBracket)
-				node := MemberExpression{
-					Object:      subAst,
-					Property:    prop,
-					ElementType: "array",
-				}
-				return this.astParseCallClassMemberExpressionTail(node)
-			}
-		}
-	}
-	this.Reset(mark)
-	return subAst
-}
-
-func (this *SansLangParser) astParseCallClassMemberExpressionTail(node Node) Node {
-	// arguments callMemberExpressionTail
-	// （'.' identifier callMemberExpressionTail）*
-	// '[' expression ']' callMemberExpressionTail *
-	// 处理函数调用
-	mark := this.Mark()
-	args := this.astParseArgsWithParen()
-	if args != nil {
-		node = CallExpression{Object: node, Args: args}
-		return this.astParseCallMemberExpressionTail(node)
-	}
-	// 处理点语法
-	if this.Expect(sansLexer.TokenTypeDot) {
-		this.Match(sansLexer.TokenTypeDot)
-		prop := this.astParseIdentifier()
-		if prop != nil {
-			node = MemberExpression{
-				Object:      node,
-				Property:    prop,
-				ElementType: "dot",
-			}
-			return this.astParseCallMemberExpressionTail(node)
-		}
-	}
-	this.Reset(mark)
-	// 处理数组
-	if this.Expect(sansLexer.TokenTypeLBracket) {
-		this.Match(sansLexer.TokenTypeLBracket)
-		prop := this.astParseExpression()
-		if prop != nil {
-			this.Match(sansLexer.TokenTypeRBracket)
-			node = MemberExpression{
-				Object:      node,
-				Property:    prop,
-				ElementType: "array",
-			}
-			return this.astParseCallMemberExpressionTail(node)
-		}
-	}
-	this.Reset(mark)
-	fmt.Printf("astParseCallMemberTail %v\n", this.Current())
-	return node
 }
 
 func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
@@ -685,7 +613,98 @@ func (this *SansLangParser) astParseCallMemberExpressionTail(node Node) Node {
 			node = MemberExpression{
 				Object:      node,
 				Property:    prop,
-				ElementType: "array",
+				ElementType: "array_dict",
+			}
+			return this.astParseCallMemberExpressionTail(node)
+		}
+	}
+	this.Reset(mark)
+	fmt.Printf("astParseCallMemberTail %v\n", this.Current())
+	return node
+}
+
+// Class
+func (this *SansLangParser) astParseCallClassMemberExpression() Node {
+	// factor arguments callMemberExpressionTail
+	// factor '.' identifier callMemberExpressionTail;
+	// factor '[' expression ']' callMemberExpressionTail
+	subAst := this.astParseFactor()
+	mark := this.Mark()
+	if subAst != nil {
+		args := this.astParseArgsWithParen()
+		if args != nil {
+			n := CallExpression{Object: subAst, Args: args}
+			node := this.astParseCallClassMemberExpressionTail(n)
+			return node
+		}
+		// 点语法
+		if this.Expect(sansLexer.TokenTypeDot) {
+			this.Match(sansLexer.TokenTypeDot)
+			prop := this.astParseIdentifier()
+			if prop != nil {
+				node := MemberExpression{
+					Object:      subAst,
+					Property:    prop,
+					ElementType: "dot",
+				}
+				return this.astParseCallClassMemberExpressionTail(node)
+			}
+		}
+		this.Reset(mark)
+		// 数组
+		if this.Expect(sansLexer.TokenTypeLBracket) {
+			this.Match(sansLexer.TokenTypeLBracket)
+			prop := this.astParseExpression()
+			if prop != nil {
+				this.Match(sansLexer.TokenTypeRBracket)
+				node := MemberExpression{
+					Object:      subAst,
+					Property:    prop,
+					ElementType: "array_dict",
+				}
+				return this.astParseCallClassMemberExpressionTail(node)
+			}
+		}
+	}
+	this.Reset(mark)
+	return subAst
+}
+
+func (this *SansLangParser) astParseCallClassMemberExpressionTail(node Node) Node {
+	// arguments callMemberExpressionTail
+	// （'.' identifier callMemberExpressionTail）*
+	// '[' expression ']' callMemberExpressionTail *
+	// 处理函数调用
+	mark := this.Mark()
+	args := this.astParseArgsWithParen()
+	if args != nil {
+		node = CallExpression{Object: node, Args: args}
+		return this.astParseCallMemberExpressionTail(node)
+	}
+	// 处理点语法
+	if this.Expect(sansLexer.TokenTypeDot) {
+		this.Match(sansLexer.TokenTypeDot)
+		prop := this.astParseIdentifier()
+		if prop != nil {
+			node = MemberExpression{
+				Object:      node,
+				Property:    prop,
+				ElementType: "dot",
+			}
+			return this.astParseCallMemberExpressionTail(node)
+		}
+	}
+	this.Reset(mark)
+	// 处理数组、object 调用
+	if this.Expect(sansLexer.TokenTypeLBracket) {
+		this.Match(sansLexer.TokenTypeLBracket)
+		prop := this.astParseExpression()
+		if prop != nil {
+			this.Match(sansLexer.TokenTypeRBracket)
+			node = MemberExpression{
+				Object:      node,
+				Property:    prop,
+				ElementType: "array_dict",
 			}
 			return this.astParseCallMemberExpressionTail(node)
 		}

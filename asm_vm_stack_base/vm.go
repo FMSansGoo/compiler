@@ -145,6 +145,10 @@ func (vm *VM) Run() error {
 		case OpCodeJump:
 			pos := int(ReadUint16(ins[ip+1:]))
 			vm.currentFrame().ip = pos - 1
+		//case OpCodeBreak:
+		// todo
+		// 这里应该直接跳出来循环
+
 		case OpCodeSetGlobal:
 			globalIndex := ReadUint16(ins[ip+1:])
 			vm.currentFrame().ip += 2
@@ -196,14 +200,20 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case OpCodeObjectCall:
+			index := vm.pop()
+			arrayDictObject := vm.pop()
+
+			err := vm.executeObjectCallExpression(arrayDictObject, index)
+			if err != nil {
+				return err
+			}
 		case OpCodeClosure:
 			utils.LogInfo("in OpCodeClosure")
 			// 已编译函数在常量池中的索引
 			constIndex := int(ReadUint16(ins[ip+1:]))
-			//utils.LogInfo("in constIndex,", constIndex)
 			// 在栈中等待的自由变量的数量
 			numFree := int(ReadUint16(ins[ip+3:]))
-			//utils.LogInfo("in numFree,", numFree)
 			vm.currentFrame().ip += 4
 			//
 			err := vm.pushFunctionClosure(int(constIndex), int(numFree))
@@ -259,12 +269,33 @@ func (vm *VM) buildArray(startIndex, endIndex int) Object {
 }
 
 func (vm *VM) buildDict(startIndex, endIndex int) Object {
-	dictPairs := make(map[Object]Object, 0)
+	dictPairs := make(map[DictKeyObject]Object, 0)
 
 	for i := startIndex; i < endIndex; i += 2 {
 		key := vm.stack[i]
 		value := vm.stack[i+1]
-		dictPairs[key] = value
+
+		// 只支持 string and number
+		switch key.ValueType() {
+		case NumberObject{}.ValueType():
+			k, ok := key.(*NumberObject)
+			if !ok {
+				utils.LogError("unusable as dict key: %s", k.ValueType())
+			}
+
+			dictPairs[DictKeyObject{Key: NumberObject{Value: k.Value}}] = value
+		case StringObject{}.ValueType():
+			k, ok := key.(*StringObject)
+			if !ok {
+				utils.LogError("unusable as dict key: %s", k.ValueType())
+			}
+
+			dictPairs[DictKeyObject{Key: StringObject{Value: k.Value}}] = value
+
+		default:
+			utils.LogError("unusable as hash key: %s", key.ValueType())
+		}
+
 	}
 
 	return &DictObject{Pairs: dictPairs}
@@ -382,6 +413,68 @@ func (vm *VM) executeBinaryStringOperation(op OpCode, left, right Object) error 
 	rightValue := right.(*StringObject).Value
 
 	return vm.push(&StringObject{Value: leftValue + rightValue})
+}
+
+func (vm *VM) executeObjectCallExpression(left, index Object) error {
+	switch {
+	case left.ValueType() == ArrayObject{}.ValueType() && index.ValueType() == NumberObject{}.ValueType():
+		return vm.executeArrayIndex(left, index)
+	case left.ValueType() == DictObject{}.ValueType():
+		return vm.executeDictIndex(left, index)
+	default:
+		return fmt.Errorf("index operator not supported: %s", left.ValueType())
+	}
+}
+
+func (vm *VM) executeArrayIndex(array, index Object) error {
+	arrayObject := array.(*ArrayObject)
+	// 这里可能是多个类型
+	i := int64(index.(*NumberObject).Value)
+	maxNum := int64(len(arrayObject.Values) - 1)
+
+	if i < 0 || i > maxNum {
+		obj := &NullObject{}
+		return vm.push(obj)
+	}
+
+	return vm.push(arrayObject.Values[i])
+}
+
+func (vm *VM) executeDictIndex(hash, index Object) error {
+	hashObject := hash.(*DictObject)
+
+	var pair Object
+
+	// todo
+	// 1.数字、string 、变量
+	switch index.ValueType() {
+	case NumberObject{}.ValueType():
+		key, ok := index.(*NumberObject)
+		if !ok {
+			return fmt.Errorf("unusable as dict key: %s", index.ValueType())
+		}
+
+		pair, ok = hashObject.Pairs[DictKeyObject{Key: NumberObject{Value: key.Value}}]
+		if !ok {
+			obj := &NullObject{}
+			return vm.push(obj)
+		}
+	case StringObject{}.ValueType():
+		key, ok := index.(*StringObject)
+		if !ok {
+			return fmt.Errorf("unusable as dict key: %s", index.ValueType())
+		}
+
+		pair, ok = hashObject.Pairs[DictKeyObject{Key: StringObject{Value: key.Value}}]
+		if !ok {
+			obj := &NullObject{}
+			return vm.push(obj)
+		}
+	default:
+		return fmt.Errorf("unusable as dict key: %s", index.ValueType())
+	}
+
+	return vm.push(pair)
 }
 
 func (vm *VM) push(o Object) error {

@@ -51,6 +51,10 @@ func (s *SymbolTable) Define(name string) Symbol {
 
 // 闭包在这里处理，要关注一下
 func (s *SymbolTable) Resolve(name string) (Symbol, bool) {
+	//名称是否在该作用域内定义？
+	//是否在该符号表中定义？
+	//如果不是，那它是一个全局绑定，还是一个内置函数？
+	//都不是， 这意味着它被定义为封闭作用域内的局部变量。
 	obj, ok := s.store[name]
 	if !ok && s.Outer != nil {
 		obj, ok = s.Outer.Resolve(name)

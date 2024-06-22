@@ -18,7 +18,8 @@ func TestNewBaseParser(t *testing.T) {
 	//// 类
 	//testParser5()
 	// 额外的扩充
-	testParser6()
+	//testParser6()
+	testParser7()
 }
 
 func testParser1() {
@@ -179,6 +180,32 @@ func testParser6() {
 	lexer := sansLexer.SansLangLexer{}
 	lexer.Code = `
 		function() { return 5 + 10 }
+	`
+	fmt.Println("====================== token init =======================")
+	tokenList := lexer.TokenList()
+	tokensLexer := sansLexer.TokenList{
+		Tokens: tokenList,
+	}
+	for _, token := range tokensLexer.Tokens {
+		fmt.Printf("token %+v\n", token)
+	}
+	fmt.Println("====================== token end =======================")
+	fmt.Println("====================== parser init =======================")
+	parser := NewSansLangParser(&tokensLexer)
+	ast := parser.Parse()
+	fmt.Printf("Ast %+v\n", ast)
+
+	fmt.Println("====================== parser end =======================")
+}
+
+func testParser7() {
+	lexer := sansLexer.SansLangLexer{}
+	lexer.Code = `
+		var a = [10]
+		var b = a[0]
+
+		var c = {"key": 1}
+		var d = c["key"]
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

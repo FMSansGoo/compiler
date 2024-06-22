@@ -25,6 +25,8 @@ var (
 	OpCodeMinus         = newOpCode("Minus", 27)
 	OpCodeJumpNotTruthy = newOpCode("JumpNotTruthy", 40)
 	OpCodeJump          = newOpCode("Jump", 41)
+	OpCodeObjectCall    = newOpCode("ObjectCall", 42)
+	//OpCodeBreak         = newOpCode("Break", 43)
 
 	OpCodeSetGlobal = newOpCode("SetGlobal", 50)
 	OpCodeGetGlobal = newOpCode("GetGlobal", 51)

@@ -180,6 +180,47 @@ func TestIf(t *testing.T) {
 				GenerateByte(OpCodePop),
 			},
 		},
+		{
+			input: `
+			if (1 == 1) { 10 } else { 20 }
+			`,
+			expectedConstants: []interface{}{1, 1, 10, 20},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeEquals),
+
+				// 10 也是地址
+				GenerateByte(OpCodeJumpNotTruthy, 16),
+				GenerateByte(OpCodeConstant, 2),
+				// 13 也是地址
+				GenerateByte(OpCodeJump, 19),
+				GenerateByte(OpCodeConstant, 3),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+	runCompilerTests(t, tests)
+}
+
+func TestWhile(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input: `
+			while (true) { break } 
+			`,
+			expectedConstants: []interface{}{10},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeTrue),
+				// 10 也是地址
+				GenerateByte(OpCodeJumpNotTruthy, 10),
+				GenerateByte(OpCodeConstant, 0),
+				// 11 也是地址
+				GenerateByte(OpCodeJump, 11),
+				GenerateByte(OpCodeNull),
+				GenerateByte(OpCodePop),
+			},
+		},
 	}
 	runCompilerTests(t, tests)
 }
@@ -289,6 +330,38 @@ func TestStringAndArrayAndObject(t *testing.T) {
 				GenerateByte(OpCodeConstant, 2),
 				GenerateByte(OpCodeMul),
 				GenerateByte(OpCodeDict, 2),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
+func TestIndexExpressions(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input:             "[1, 2, 3][1]",
+			expectedConstants: []interface{}{1, 2, 3, 1},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeConstant, 2),
+				GenerateByte(OpCodeArray, 3),
+				GenerateByte(OpCodeConstant, 3),
+				GenerateByte(OpCodeObjectCall),
+				GenerateByte(OpCodePop),
+			},
+		},
+		{
+			input:             `{"key":1}["key"]`,
+			expectedConstants: []interface{}{"key", 1, "key"},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeDict, 2),
+				GenerateByte(OpCodeConstant, 2),
+				GenerateByte(OpCodeObjectCall),
 				GenerateByte(OpCodePop),
 			},
 		},

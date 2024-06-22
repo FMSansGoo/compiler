@@ -110,6 +110,10 @@ func (c *Compiler) Compile(node parser.Node) {
 		v := node.(parser.NumberLiteral).Value
 		integer := &NumberObject{Value: v}
 		c.emit(OpCodeConstant, c.addConstant(integer))
+	case parser.AstTypeStringLiteral.Name():
+		v := node.(parser.StringLiteral).Value
+		literal := &StringObject{Value: v}
+		c.emit(OpCodeConstant, c.addConstant(literal))
 	case parser.AstTypeBooleanLiteral.Name():
 		v := node.(parser.BooleanLiteral).Value
 		if v {
@@ -148,15 +152,47 @@ func (c *Compiler) Compile(node parser.Node) {
 		}
 		afterAlternative := len(c.currentInstructions())
 		c.changeOperand(jumpPos, afterAlternative)
+	case parser.AstTypeWhileStatement.Name():
+		// 先编译条件
+		n := node.(parser.WhileStatement)
+		condition := n.Condition
+		c.Compile(condition)
+
+		// 用 9999 当占位符,如果 condition 不是真的就跳到 while 结束
+		jumpNotTruthyPos := c.emit(OpCodeJumpNotTruthy, 9999)
+		c.Compile(n.Body)
+
+		// 在这里检测有没有
+		// 把 pop 去掉
+		if c.lastInstructionIs(OpCodePop) {
+			c.removeLastPop()
+		}
+
+		// 跳到真实地址
+		jumpPos := c.emit(OpCodeJump, 9999)
+
+		// 将占位符换成真实地址
+		afterConsequencePos := len(c.currentInstructions())
+		c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
+
+		// 将占位符换成真实地址
+		afterAlternative := len(c.currentInstructions())
+		c.changeOperand(jumpPos, afterAlternative)
+	case parser.AstTypeBreakStatement.Name():
+		//可以在这里直接跳出去循环
+		//c.emit(OpCodeBreak)
+		// 跳到真实地址
+		jumpPos := c.emit(OpCodeJump, 9999)
+		// 将占位符换成真实地址
+		afterAlternative := len(c.currentInstructions())
+		c.changeOperand(jumpPos, afterAlternative)
+	case parser.AstTypeForStatement.Name():
+		utils.LogError("not implemented", node.Type())
 	case parser.AstTypeNullLiteral.Name():
 		_, ok := node.(parser.NullLiteral)
 		if ok {
 			c.emit(OpCodeNull)
 		}
-	case parser.AstTypeStringLiteral.Name():
-		v := node.(parser.StringLiteral).Value
-		literal := &StringObject{Value: v}
-		c.emit(OpCodeConstant, c.addConstant(literal))
 	case parser.AstTypeArrayLiteral.Name():
 		vs := node.(parser.ArrayLiteral).Values
 		for _, v := range vs {
@@ -223,7 +259,15 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.Compile(arg)
 		}
 		c.emit(OpCodeFunctionCall, len(n.Args))
+	case parser.AstTypeMemberExpression.Name():
+		n := node.(parser.MemberExpression)
 
+		if n.ElementType == "array_dict" {
+			c.Compile(n.Object)
+			c.Compile(n.Property)
+			c.emit(OpCodeObjectCall)
+		}
+		// todo 支持点语法
 	case parser.AstTypeReturnStatement.Name():
 		v := node.(parser.ReturnStatement).Value
 		if v != nil {

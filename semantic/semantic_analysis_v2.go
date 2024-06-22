@@ -576,6 +576,23 @@ func (this *SemanticAnalysisV2) visitIdentifier(node parser.Node) (valueType All
 	return UnKnownType{}, node.(parser.Identifier).Value, varType
 }
 
+func (this *SemanticAnalysisV2) visitDictKeyLiteral(node parser.Node) (valueType AllType, variableName string, varType string) {
+	switch node.Type() {
+	case parser.AstTypeStringLiteral.Name():
+		valueType, variableName = this.visitStringLiteral(node)
+		return valueType, variableName, varType
+	case parser.AstTypeNumberLiteral.Name():
+		valueType = this.visitNumberLiteral(node)
+		return valueType, fmt.Sprintf("%d", int64(node.(parser.NumberLiteral).Value)), varType
+	case parser.AstTypeIdentifier.Name():
+		return this.visitIdentifier(node)
+	default:
+		utils.LogError("visitDictKeyLiteral error, unknownType", node)
+	}
+
+	return UnKnownType{}, "", ""
+}
+
 func (this *SemanticAnalysisV2) visitStringLiteral(node parser.Node) (valueType AllType, value string) {
 	if node.Type() != parser.AstTypeStringLiteral.Name() {
 		return VoidType{}, ""
@@ -918,11 +935,20 @@ func (this *SemanticAnalysisV2) visitPropertyAssignment(node parser.Node) (vType
 	if node.Type() != parser.AstTypePropertyAssignment.Name() {
 		return VoidType{}, ""
 	}
-	_, keyName = this.visitStringLiteral(node.(parser.PropertyAssignment).Key)
 
-	v := node.(parser.PropertyAssignment).Value
+	kv := node.(parser.PropertyAssignment)
+	// key 必须是 1.数字、string、变量也得是 数字 or string
+	var keyValueType AllType
+	keyValueType, keyName, _ = this.visitDictKeyLiteral(kv.Key)
+
+	switch keyValueType {
+	case StringType{}, NumberType{}:
+	default:
+		utils.LogError("property assignment key type error", keyValueType, kv.Key.Type())
+	}
+
+	v := kv.Value
 	switch v.Type() {
-	// todo
 	case parser.AstTypeFunctionExpression.Name():
 		vType = this.visitFunctionExpression(v)
 	case parser.AstTypeBinaryExpression.Name():
@@ -1033,7 +1059,8 @@ func (this *SemanticAnalysisV2) visitMemberExpression(node parser.Node) (AllType
 			return UnKnownType{}, ""
 		}
 
-	case "array":
+	// 这里是调用数组或者调用dict
+	case "array_dict":
 	}
 	return UnKnownType{}, ""
 }

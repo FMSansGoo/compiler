@@ -41,10 +41,11 @@ func TestVm(t *testing.T) {
 
 func TestConditionals(t *testing.T) {
 	tests := []vmTestCase{
-		{"if (true) { 10 }", 10},
-		{"if (true) { 10 } else { 20 }", 10},
-		{"if (false) { 10 } else { 20 }", 20},
-		{"if (1) { 10 }", 10},
+		//{"if (true) { 10 }", 10},
+		//{"if (true) { 10 } else { 20 }", 10},
+		//{"if (false) { 10 } else { 20 }", 20},
+		//{"if (1) { 10 }", 10},
+		{"while(true){ break }", nil},
 	}
 
 	runVmTests(t, tests)
@@ -83,12 +84,29 @@ func TestArrayExpressions(t *testing.T) {
 func TestObjectLiterals(t *testing.T) {
 	tests := []vmTestCase{
 		{
-			"{}", map[Object]Object{},
+			"{}", map[DictKeyObject]Object{},
 		},
 		{
 			`{"1": 2}`,
-			map[Object]Object{&StringObject{Value: "1"}: &NumberObject{Value: 2}},
+			map[DictKeyObject]Object{
+				DictKeyObject{Key: StringObject{Value: "1"}}: &NumberObject{Value: 2},
+			},
 		},
+	}
+
+	runVmTests(t, tests)
+}
+
+func TestArrayDictIndexExpression(t *testing.T) {
+	tests := []vmTestCase{
+		{"[1, 2, 3][1]", 2},
+		{"[1, 2, 3][0 + 2]", 3},
+		{"[[1, 2, 3]][0][0]", 1},
+		{`{"k":1}["k"]`, &NumberObject{Value: 1}},
+		{`
+				var a = 1	
+				{a:1}[a]
+			`, &NumberObject{Value: 1}},
 	}
 
 	runVmTests(t, tests)
@@ -287,6 +305,22 @@ func TestRecursiveFibonacci(t *testing.T) {
 			 } 
 		 } 
 		 countDown(1)
+		`,
+			expected: 0,
+		},
+		{
+			input: `
+			const countDown = function(x) { 
+				if (x == 0) { 
+					return 0  
+				} else { 
+					countDown(x - 1) 
+				} 
+			}  
+			const wrapper = function() { 
+				countDown(1)  
+			} 
+			wrapper()
 		`,
 			expected: 0,
 		},

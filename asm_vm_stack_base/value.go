@@ -43,8 +43,16 @@ func (b ArrayObject) ValueType() string {
 	return "ArrayObject"
 }
 
+type DictKeyObject struct {
+	Key Object
+}
+
+func (b DictKeyObject) ValueType() string {
+	return "DictKeyObject"
+}
+
 type DictObject struct {
-	Pairs map[Object]Object `json:"values"`
+	Pairs map[DictKeyObject]Object `json:"values"`
 }
 
 func (b DictObject) ValueType() string {
