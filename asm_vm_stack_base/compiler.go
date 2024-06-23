@@ -194,18 +194,13 @@ func (c *Compiler) Compile(node parser.Node) {
 
 		// 将占位符换成while 结束后的地址
 		afterConsequencePos := len(c.currentInstructions())
+		//todo 这里要拿一个栈记录一下这个 循环的结束地址，方便给 break 用
 		c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
 
 		// 将占位符换成跳到条件编译前的地址
 		c.changeOperand(jumpPos, inLoopBeforePos)
 	case parser.AstTypeBreakStatement.Name():
-		//可以在这里直接跳出去循环
-		//c.emit(OpCodeBreak)
-		// 跳到真实地址
-		jumpPos := c.emit(OpCodeJump, 9999)
-		// 将占位符换成真实地址
-		afterAlternative := len(c.currentInstructions())
-		c.changeOperand(jumpPos, afterAlternative)
+		utils.LogError("not implemented", node.Type())
 	case parser.AstTypeForStatement.Name():
 		utils.LogError("not implemented", node.Type())
 	case parser.AstTypeNullLiteral.Name():
