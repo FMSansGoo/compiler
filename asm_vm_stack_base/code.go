@@ -112,6 +112,8 @@ var definitions = map[OpCode]*Definition{
 	OpCodeFunctionCall: {OpCodeFunctionCall.Name(), 2, 1},
 	// 获取自由变量
 	OpCodeGetFree: {OpCodeGetFree.Name(), 1, 1},
+	// 获取内置函数
+	OpCodeGetBuiltin: {OpCodeGetBuiltin.Name(), 1, 1},
 }
 
 func Lookup(op string) (*Definition, error) {

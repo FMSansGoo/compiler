@@ -128,7 +128,7 @@ func TestObjectLiterals(t *testing.T) {
 		{
 			`{"1": 2}`,
 			map[DictKeyObject]Object{
-				DictKeyObject{Key: StringObject{Value: "1"}}: &NumberObject{Value: 2},
+				DictKeyObject{Key: StringObject{Value: "1"}}: NumberObject{Value: 2},
 			},
 		},
 	}
@@ -142,10 +142,17 @@ func TestArrayDictIndexExpression(t *testing.T) {
 		{"[1, 2, 3][0 + 2]", 3},
 		{"[[1, 2, 3]][0][0]", 1},
 		{`{"k":1}["k"]`, &NumberObject{Value: 1}},
-		{`
-				var a = 1	
-				{a:1}[a]
-			`, &NumberObject{Value: 1}},
+		{`var a = 1 {a:1}[a]`, &NumberObject{Value: 1}},
+	}
+
+	runVmTests(t, tests)
+}
+
+func TestBuiltinsExpression(t *testing.T) {
+	tests := []vmTestCase{
+		{`len([1,2])`, 2},
+		{`log("1")`, &NullObject{}},
+		{`push([],1)`, []int{1}},
 	}
 
 	runVmTests(t, tests)
@@ -435,6 +442,7 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 			t.Errorf("testStringObject failed: %s", err)
 		}
 	case []int:
+		utils.LogInfo("in []int")
 		array, ok := actual.(*ArrayObject)
 		if !ok {
 			t.Errorf("object not Array: %T (%+v)", actual, actual)
@@ -450,6 +458,7 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 			testExpectedObject(t, expectedElm, array.Values[i])
 		}
 	case []bool:
+		utils.LogInfo("in []bool")
 		array, ok := actual.(*ArrayObject)
 		if !ok {
 			t.Errorf("object not Array: %T (%+v)", actual, actual)
@@ -465,6 +474,7 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 			testExpectedObject(t, expectedElm, array.Values[i])
 		}
 	case []string:
+		utils.LogInfo("in []string")
 		array, ok := actual.(*ArrayObject)
 		if !ok {
 			t.Errorf("object not Array: %T (%+v)", actual, actual)
@@ -480,6 +490,7 @@ func testExpectedObject(t *testing.T, expected interface{}, actual Object) {
 			testExpectedObject(t, expectedElm, array.Values[i])
 		}
 	case []any:
+		utils.LogInfo("in []any")
 		array, ok := actual.(*ArrayObject)
 		if !ok {
 			t.Errorf("object not Array: %T (%+v)", actual, actual)

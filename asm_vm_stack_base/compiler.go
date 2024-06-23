@@ -39,6 +39,11 @@ func NewCompiler() *Compiler {
 		previousInstruction: EmittedInstruction{},
 	}
 
+	symbolTable := NewSymbolTable()
+	for i, v := range Builtins {
+		symbolTable.DefineBuiltin(i, v.Name)
+	}
+
 	return &Compiler{
 		instructions: Instructions{},
 		constants:    []Object{},
@@ -46,7 +51,7 @@ func NewCompiler() *Compiler {
 		scopes: []CompilationScope{
 			globalScope,
 		},
-		symbolTable: NewSymbolTable(),
+		symbolTable: symbolTable,
 	}
 }
 
@@ -78,7 +83,8 @@ func (c *Compiler) Compile(node parser.Node) {
 	case parser.AstTypeAssignmentExpression.Name():
 		n := node.(parser.AssignmentExpression)
 		// 先处理 = 的赋值
-		if n.Operator == "=" {
+		switch n.Operator {
+		case "=":
 			name := n.Left.(parser.Identifier).Value
 			utils.LogInfo("assign variable", name)
 			symbol, ok := c.symbolTable.Resolve(name)
@@ -92,6 +98,9 @@ func (c *Compiler) Compile(node parser.Node) {
 			} else {
 				c.emit(OpCodeSetLocal, symbol.Index)
 			}
+		default:
+			utils.LogError("unimplemented operator", n.Operator)
+			//case "+=":
 		}
 	case parser.AstTypeIdentifier.Name():
 		n := node.(parser.Identifier)
@@ -239,7 +248,9 @@ func (c *Compiler) Compile(node parser.Node) {
 		// 先编译 初始化
 		n := node.(parser.ForStatement)
 		init := n.Init
-		c.Compile(init)
+		if init != nil {
+			c.Compile(init)
+		}
 
 		// 要标记进入了一个循环
 		c.enterLoop()
@@ -258,7 +269,9 @@ func (c *Compiler) Compile(node parser.Node) {
 
 		inLoopUpdateBeforePos := len(c.currentInstructions())
 
-		c.Compile(n.Update)
+		if n.Update != nil {
+			c.Compile(n.Update)
+		}
 
 		c.emit(OpCodeJump, inLoopConditionBeforePos)
 
@@ -490,6 +503,8 @@ func (c *Compiler) loadSymbol(s Symbol) {
 		c.emit(OpCodeGetLocal, s.Index)
 	case FreeScope:
 		c.emit(OpCodeGetFree, s.Index)
+	case BuiltinScope:
+		c.emit(OpCodeGetBuiltin, s.Index)
 	}
 }
 

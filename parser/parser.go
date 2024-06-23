@@ -514,12 +514,15 @@ func (this *SansLangParser) astParseArgsWithParen() []Node {
 	args := []Node{}
 	if this.Expect(sansLexer.TokenTypeLParen) {
 		this.Match(sansLexer.TokenTypeLParen)
-		for this.Expect(sansLexer.TokenTypeNumeric) || this.Expect(sansLexer.TokenTypeId) || this.Expect(sansLexer.TokenTypeString) {
-			// 字面量
+		// 只支持 number , string , 变量
+		for this.Expect(sansLexer.TokenTypeNumeric) || this.Expect(sansLexer.TokenTypeId) || this.Expect(sansLexer.TokenTypeString) || this.Expect(sansLexer.TokenTypeLBracket) || this.Expect(sansLexer.TokenTypeLBrace) || this.Expect(sansLexer.TokenTypeBoolean) || this.Expect(sansLexer.TokenTypeNull) {
 			arg := this.astParseLiteral()
+			// 字面量
 			if arg != nil {
 				args = append(args, arg)
 			}
+
+			utils.LogInfo("in astParseArgsWithParen", arg, this.Current())
 			// ,
 			t := this.Match(sansLexer.TokenTypeComma)
 			if t.Error() {

@@ -35,6 +35,10 @@ func LogError(msg string, args ...interface{}) {
 	panic(str)
 }
 
+func LogErrorFormat(msg string, args ...interface{}) {
+	fmt.Printf("[ERROR] %s: %s\n", msg, fmt.Sprint(args...))
+}
+
 func InStringSlice(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {

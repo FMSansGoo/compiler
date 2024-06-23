@@ -151,10 +151,6 @@ func (vm *VM) Run() error {
 		case OpCodeJump:
 			pos := int(ReadUint16(ins[ip+1:]))
 			vm.currentFrame().ip = pos - 1
-		//case OpCodeBreak:
-		// todo
-		// 这里应该直接跳出来循环
-
 		case OpCodeSetGlobal:
 			globalIndex := ReadUint16(ins[ip+1:])
 			vm.currentFrame().ip += 2
@@ -182,6 +178,17 @@ func (vm *VM) Run() error {
 			frame := vm.currentFrame()
 
 			err := vm.push(vm.stack[frame.basePointer+int(localIndex)])
+			if err != nil {
+				return err
+			}
+
+		case OpCodeGetBuiltin:
+			builtinIndex := ReadUint8(ins[ip+1:])
+			vm.currentFrame().ip += 1
+
+			definition := Builtins[builtinIndex]
+
+			err := vm.push(definition.Builtin)
 			if err != nil {
 				return err
 			}
@@ -229,7 +236,6 @@ func (vm *VM) Run() error {
 		case OpCodeFunctionCall:
 			utils.LogInfo("in OpCodeFunctionCall")
 			numArgs := int(ReadUint16(ins[ip+1:]))
-			//utils.LogInfo("in numArgs", numArgs)
 			vm.currentFrame().ip += 2
 
 			err := vm.executeFunctionCall(int(numArgs))
@@ -312,6 +318,9 @@ func (vm *VM) executeFunctionCall(numArgs int) error {
 	switch callee := callee.(type) {
 	case *ClosureObject:
 		return vm.callFunctionClosure(callee, numArgs)
+	// 处理一下内置方法
+	case *BuiltinObject:
+		return vm.callBuiltin(callee, numArgs)
 	default:
 		return fmt.Errorf("calling non-function and non-built-in")
 	}
@@ -328,6 +337,22 @@ func (vm *VM) callFunctionClosure(cl *ClosureObject, numArgs int) error {
 	vm.pushFrame(frame)
 
 	vm.sp = frame.basePointer + cl.Fn.NumLocals
+
+	return nil
+}
+
+func (vm *VM) callBuiltin(builtin *BuiltinObject, numArgs int) error {
+	args := vm.stack[vm.sp-numArgs : vm.sp]
+
+	result := builtin.Func(args...)
+	vm.sp = vm.sp - numArgs - 1
+
+	if result != nil {
+		utils.LogInfo("callBuiltin", result)
+		vm.push(result)
+	} else {
+		vm.push(&NullObject{})
+	}
 
 	return nil
 }
