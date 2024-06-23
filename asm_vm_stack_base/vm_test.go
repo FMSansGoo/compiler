@@ -152,7 +152,9 @@ func TestBuiltinsExpression(t *testing.T) {
 	tests := []vmTestCase{
 		{`len([1,2])`, 2},
 		{`log("1")`, &NullObject{}},
-		{`push([],1)`, []int{1}},
+		{`push([1],1)`, []int{1, 1}},
+		{`push(["s"],"s")`, []string{"s", "s"}},
+		{`push([true],true)`, []bool{true, true}},
 	}
 
 	runVmTests(t, tests)
