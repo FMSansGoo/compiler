@@ -67,6 +67,24 @@ func (c *Compiler) Compile(node parser.Node) {
 		} else {
 			c.emit(OpCodeSetLocal, symbol.Index)
 		}
+	case parser.AstTypeAssignmentExpression.Name():
+		n := node.(parser.AssignmentExpression)
+		// 先处理 = 的赋值
+		if n.Operator == "=" {
+			name := n.Left.(parser.Identifier).Value
+			utils.LogInfo("define variable", name)
+			symbol, ok := c.symbolTable.Resolve(name)
+			if !ok {
+				utils.LogError("undefined variable", name)
+			}
+			c.Compile(n.Right)
+
+			if symbol.Scope == GlobalScope {
+				c.emit(OpCodeSetGlobal, symbol.Index)
+			} else {
+				c.emit(OpCodeSetLocal, symbol.Index)
+			}
+		}
 	case parser.AstTypeIdentifier.Name():
 		n := node.(parser.Identifier)
 		symbol, ok := c.symbolTable.Resolve(n.Value)
@@ -153,6 +171,9 @@ func (c *Compiler) Compile(node parser.Node) {
 		afterAlternative := len(c.currentInstructions())
 		c.changeOperand(jumpPos, afterAlternative)
 	case parser.AstTypeWhileStatement.Name():
+		// 标记进来条件前的地址
+		inLoopBeforePos := len(c.currentInstructions())
+
 		// 先编译条件
 		n := node.(parser.WhileStatement)
 		condition := n.Condition
@@ -168,16 +189,15 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.removeLastPop()
 		}
 
-		// 跳到真实地址
+		// 跳到条件编译前
 		jumpPos := c.emit(OpCodeJump, 9999)
 
-		// 将占位符换成真实地址
+		// 将占位符换成while 结束后的地址
 		afterConsequencePos := len(c.currentInstructions())
 		c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
 
-		// 将占位符换成真实地址
-		afterAlternative := len(c.currentInstructions())
-		c.changeOperand(jumpPos, afterAlternative)
+		// 将占位符换成跳到条件编译前的地址
+		c.changeOperand(jumpPos, inLoopBeforePos)
 	case parser.AstTypeBreakStatement.Name():
 		//可以在这里直接跳出去循环
 		//c.emit(OpCodeBreak)

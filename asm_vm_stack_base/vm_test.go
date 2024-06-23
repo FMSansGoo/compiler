@@ -45,7 +45,7 @@ func TestConditionals(t *testing.T) {
 		//{"if (true) { 10 } else { 20 }", 10},
 		//{"if (false) { 10 } else { 20 }", 20},
 		//{"if (1) { 10 }", 10},
-		{"while(true){ break }", nil},
+		{"var i = 0 while (i == 0) { i = 1 } i", 1},
 	}
 
 	runVmTests(t, tests)

@@ -154,13 +154,13 @@ func TestIf(t *testing.T) {
 			`,
 			expectedConstants: []interface{}{10},
 			expectedInstructions: []Instructions{
-				GenerateByte(OpCodeTrue),
+				GenerateByte(OpCodeTrue), // 1
 				// 10 也是地址
-				GenerateByte(OpCodeJumpNotTruthy, 10),
-				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeJumpNotTruthy, 10), // 3
+				GenerateByte(OpCodeConstant, 0),       // 3
 				// 11 也是地址
-				GenerateByte(OpCodeJump, 11),
-				GenerateByte(OpCodeNull),
+				GenerateByte(OpCodeJump, 11), //3
+				GenerateByte(OpCodeNull),     // 11
 				GenerateByte(OpCodePop),
 			},
 		},
@@ -207,18 +207,24 @@ func TestWhile(t *testing.T) {
 	tests := []CompilerTest{
 		{
 			input: `
-			while (true) { break } 
+			var i = 0
+			while (i == 0) { i = 1 }
 			`,
-			expectedConstants: []interface{}{10},
+			expectedConstants: []interface{}{0, 0, 1},
 			expectedInstructions: []Instructions{
-				GenerateByte(OpCodeTrue),
-				// 10 也是地址
-				GenerateByte(OpCodeJumpNotTruthy, 10),
-				GenerateByte(OpCodeConstant, 0),
-				// 11 也是地址
-				GenerateByte(OpCodeJump, 11),
-				GenerateByte(OpCodeNull),
-				GenerateByte(OpCodePop),
+				// pre
+				GenerateByte(OpCodeConstant, 0),  // 3
+				GenerateByte(OpCodeSetGlobal, 0), // 6
+				// conition
+				GenerateByte(OpCodeGetGlobal, 0), // 9
+				GenerateByte(OpCodeConstant, 1),  // 12
+				GenerateByte(OpCodeEquals),       // 13
+				// body
+				GenerateByte(OpCodeJumpNotTruthy, 25), // 16
+				GenerateByte(OpCodeConstant, 2),       // 19
+				GenerateByte(OpCodeSetGlobal, 0),      // 22
+				GenerateByte(OpCodeJump, 6),           // 25
+				GenerateByte(OpCodePop),               // 26
 			},
 		},
 	}
