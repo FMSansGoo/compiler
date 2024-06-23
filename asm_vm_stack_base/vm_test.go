@@ -45,26 +45,44 @@ func TestConditionals(t *testing.T) {
 		//{"if (true) { 10 } else { 20 }", 10},
 		//{"if (false) { 10 } else { 20 }", 20},
 		//{"if (1) { 10 }", 10},
-		{`var i = 0 
-		while (i == 0) { 
-			while(true){
-				break
-			} 
-			i = 1
-		} i`, 1,
-		},
-		{`var i = 0 
-		while (i == 0) {
-			i = 1
-			while(true){
-				if(i == 0){
-					break
-				} else {
-					i = 0
-					continue
-				}
+		{`var i = 1
+		if( i > 2 ) { 
+			i = i + 1
+		}
+		i
+		`, 1},
+
+		//{`var i = 0
+		//while (i == 0) {
+		//	while(true){
+		//		break
+		//	}
+		//	i = 1
+		//} i`, 1,
+		//},
+		//{`var i = 0
+		//while (i == 0) {
+		//	i = 1
+		//	while(true){
+		//		if(i == 0){
+		//			break
+		//		} else {
+		//			i = 0
+		//			continue
+		//		}
+		//	}
+		//	i = 2
+		//} i`, 2,
+		//},
+		{`
+		var i = 0
+		for(i = 0; i < 4; i = i + 2) {
+			if (i == 0) {
+				continue
 			}
-			i = 2
+			if (i == 2) {
+				break
+			}
 		} i`, 2,
 		},
 	}

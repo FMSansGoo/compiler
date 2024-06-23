@@ -130,6 +130,12 @@ func (c *Compiler) Compile(node parser.Node) {
 		case "!=":
 			c.emit(OpCodeNotEquals)
 		case ">=":
+			c.emit(OpCodeGreaterThanEquals)
+		case "<=":
+			c.emit(OpCodeLessThanEquals)
+		case "<":
+			c.emit(OpCodeLessThan)
+		case ">":
 			c.emit(OpCodeGreaterThan)
 		}
 	case parser.AstTypeNumberLiteral.Name():
@@ -168,7 +174,8 @@ func (c *Compiler) Compile(node parser.Node) {
 		c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
 
 		if n.Alternate == nil {
-			c.emit(OpCodeNull)
+			// todo 这个 null 不知道做啥的
+			//c.emit(OpCodeNull)
 		} else {
 			c.Compile(n.Alternate)
 
@@ -229,7 +236,61 @@ func (c *Compiler) Compile(node parser.Node) {
 		jumpPos := c.emit(OpCodeJump, 9999)
 		c.setContinueAddress(jumpPos)
 	case parser.AstTypeForStatement.Name():
-		utils.LogError("not implemented", node.Type())
+		// 先编译 初始化
+		n := node.(parser.ForStatement)
+		init := n.Init
+		c.Compile(init)
+
+		// 要标记进入了一个循环
+		c.enterLoop()
+
+		// 标记进来条件前的地址
+		inLoopConditionBeforePos := len(c.currentInstructions())
+
+		// 条件
+		condition := n.Test
+		c.Compile(condition)
+
+		// 用 9999 当占位符,如果 condition 不是真的就跳到 for 结束
+		jumpOutLoopNotTruthyPos := c.emit(OpCodeJumpNotTruthy, 9999)
+		// jump body
+		jumLoopBodyPos := c.emit(OpCodeJump, 9999)
+
+		inLoopUpdateBeforePos := len(c.currentInstructions())
+
+		c.Compile(n.Update)
+
+		c.emit(OpCodeJump, inLoopConditionBeforePos)
+
+		inLoopBodyBeforePos := len(c.currentInstructions())
+		c.changeOperand(jumLoopBodyPos, inLoopBodyBeforePos)
+
+		c.Compile(n.Body)
+
+		// 在这里检测有没有 pop，把 pop 去掉
+		if c.lastInstructionIs(OpCodePop) {
+			c.removeLastPop()
+		}
+
+		afterConsequencePos := len(c.currentInstructions())
+
+		// 处理 continue 地址
+		hasContinue, continuePos := c.getContinueRetAddress()
+		if hasContinue {
+			c.changeOperand(continuePos, inLoopUpdateBeforePos)
+		}
+
+		// 处理 break 地址
+		hasBreak, breakPos := c.getBreakRetAddress()
+		if hasBreak {
+			c.changeOperand(breakPos, afterConsequencePos)
+		}
+
+		// 跳出去循环的地址
+		c.changeOperand(jumpOutLoopNotTruthyPos, afterConsequencePos)
+
+		c.outLoop()
+
 	case parser.AstTypeNullLiteral.Name():
 		_, ok := node.(parser.NullLiteral)
 		if ok {

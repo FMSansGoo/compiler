@@ -71,9 +71,15 @@ func (vm *VM) Run() error {
 		ins := vm.currentFrame().Instructions()
 
 		op := ins[ip]
-		utils.LogInfo("op ", op)
 		opCode := GetOpCodeFromValue(op)
-		utils.LogInfo("opCode ", opCode)
+		utils.LogInfo("op opCode", op, opCode)
+		// debug mode
+		//for _, object := range vm.stack {
+		//	if object == nil {
+		//		continue
+		//	}
+		//	utils.LogInfo("stack item", object)
+		//}
 		switch opCode {
 		case OpCodeConstant:
 			constIndex := ReadUint16(ins[ip+1:])
@@ -100,7 +106,7 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
-		case OpCodeEquals, OpCodeNotEquals, OpCodeGreaterThan:
+		case OpCodeEquals, OpCodeNotEquals, OpCodeGreaterThan, OpCodeGreaterThanEquals, OpCodeLessThan, OpCodeLessThanEquals:
 			err := vm.executeComparison(opCode)
 			if err != nil {
 				return err
@@ -330,6 +336,7 @@ func (vm *VM) executeComparison(op OpCode) error {
 	right := vm.pop()
 	left := vm.pop()
 
+	utils.LogInfo("executeComparison look left right", left, right)
 	numType := NumberObject{}.ValueType()
 
 	if left.ValueType() == numType || right.ValueType() == numType {
@@ -350,13 +357,21 @@ func (vm *VM) executeIntegerComparison(op OpCode, left, right Object) error {
 	leftValue := left.(*NumberObject).Value
 	rightValue := right.(*NumberObject).Value
 
+	utils.LogInfo("executeIntegerComparison look left right", left, right)
+
 	switch op {
 	case OpCodeEquals:
 		return vm.push(&BoolObject{Value: leftValue == rightValue})
 	case OpCodeNotEquals:
 		return vm.push(&BoolObject{Value: rightValue != leftValue})
 	case OpCodeGreaterThan:
-		return vm.push(&BoolObject{Value: rightValue > leftValue})
+		return vm.push(&BoolObject{Value: leftValue > rightValue})
+	case OpCodeGreaterThanEquals:
+		return vm.push(&BoolObject{Value: leftValue >= rightValue})
+	case OpCodeLessThan:
+		return vm.push(&BoolObject{Value: leftValue < rightValue})
+	case OpCodeLessThanEquals:
+		return vm.push(&BoolObject{Value: leftValue <= rightValue})
 	default:
 		return fmt.Errorf("unknown operator: %+v ", op)
 	}
