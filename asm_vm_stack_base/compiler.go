@@ -146,6 +146,17 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.emit(OpCodeLessThan)
 		case ">":
 			c.emit(OpCodeGreaterThan)
+		case "+=":
+			c.emit(OpCodeAddEquals)
+		case "-=":
+			c.emit(OpCodeSubEquals)
+		case "*=":
+			c.emit(OpCodeMulEquals)
+		case "/=":
+			c.emit(OpCodeDivEquals)
+
+		default:
+			utils.LogError("unknown operator", op)
 		}
 	case parser.AstTypeNumberLiteral.Name():
 		v := node.(parser.NumberLiteral).Value

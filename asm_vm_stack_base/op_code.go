@@ -26,6 +26,10 @@ var (
 	OpCodeLessThanEquals    = newOpCode("LessThanEquals", 28)
 	OpCodeGreaterThan       = newOpCode("GreaterThan", 29)
 	OpCodeGreaterThanEquals = newOpCode("GreateThanEquals", 30)
+	OpCodeAddEquals         = newOpCode("AddEquals", 31)
+	OpCodeSubEquals         = newOpCode("SubEquals", 32)
+	OpCodeMulEquals         = newOpCode("MulEquals", 33)
+	OpCodeDivEquals         = newOpCode("DivEquals", 34)
 
 	OpCodeJumpNotTruthy = newOpCode("JumpNotTruthy", 40)
 	OpCodeJump          = newOpCode("Jump", 41)

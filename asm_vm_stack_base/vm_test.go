@@ -160,6 +160,15 @@ func TestBuiltinsExpression(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestBinaryAssignmentExpression(t *testing.T) {
+	tests := []vmTestCase{
+		{`var a = 1 a *= 1`, 1},
+		{`var a = "1" a += "12"`, "112"},
+	}
+
+	runVmTests(t, tests)
+}
+
 func TestCallingFunctionsWithoutArguments(t *testing.T) {
 	tests := []vmTestCase{
 		//{

@@ -91,7 +91,7 @@ func (vm *VM) Run() error {
 			}
 		case OpCodePop:
 			vm.pop()
-		case OpCodeMul, OpCodeAdd, OpCodeSub, OpCodeDiv:
+		case OpCodeMul, OpCodeAdd, OpCodeSub, OpCodeDiv, OpCodeAddEquals, OpCodeSubEquals, OpCodeMulEquals, OpCodeDivEquals:
 			err := vm.executeBinaryOperation(opCode)
 			if err != nil {
 				return err
@@ -422,6 +422,26 @@ func (vm *VM) executeBinaryOperation(op OpCode) error {
 	}
 }
 
+func (vm *VM) executeBinaryAssignmentOperation(op OpCode) error {
+	right := vm.pop()
+	left := vm.pop()
+
+	leftType := left.ValueType()
+	rightType := right.ValueType()
+
+	numType := NumberObject{}.ValueType()
+	strType := StringObject{}.ValueType()
+
+	switch {
+	case leftType == numType && rightType == numType:
+		return vm.executeBinaryIntegerOperation(op, left, right)
+	case leftType == strType && rightType == strType:
+		return vm.executeBinaryStringOperation(op, left, right)
+	default:
+		return fmt.Errorf("unsupported types for binary operation: %s %s", leftType, rightType)
+	}
+}
+
 func (vm *VM) executeBinaryIntegerOperation(op OpCode, left, right Object) error {
 	leftValue := left.(*NumberObject).Value
 	rightValue := right.(*NumberObject).Value
@@ -429,13 +449,13 @@ func (vm *VM) executeBinaryIntegerOperation(op OpCode, left, right Object) error
 	var result float64
 
 	switch op {
-	case OpCodeAdd:
+	case OpCodeAdd, OpCodeAddEquals:
 		result = leftValue + rightValue
-	case OpCodeSub:
+	case OpCodeSub, OpCodeSubEquals:
 		result = leftValue - rightValue
-	case OpCodeMul:
+	case OpCodeMul, OpCodeMulEquals:
 		result = leftValue * rightValue
-	case OpCodeDiv:
+	case OpCodeDiv, OpCodeDivEquals:
 		result = leftValue / rightValue
 	default:
 		return fmt.Errorf("unknown integer operator: %+v", op)
@@ -445,7 +465,7 @@ func (vm *VM) executeBinaryIntegerOperation(op OpCode, left, right Object) error
 }
 
 func (vm *VM) executeBinaryStringOperation(op OpCode, left, right Object) error {
-	if op != OpCodeAdd {
+	if op != OpCodeAdd && op != OpCodeAddEquals {
 		return fmt.Errorf("unknown string operator: %+v", op)
 	}
 
