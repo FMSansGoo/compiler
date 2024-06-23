@@ -11,6 +11,14 @@ type Compiler struct {
 	scopes       []CompilationScope
 	scopeIndex   int
 	symbolTable  *SymbolTable
+	loopIndex    int
+	Loops        []Loop
+}
+
+type Loop struct {
+	LoopIndex       int
+	LoopBreakPos    int
+	LoopContinuePos int
 }
 
 type EmittedInstruction struct {
@@ -72,7 +80,7 @@ func (c *Compiler) Compile(node parser.Node) {
 		// 先处理 = 的赋值
 		if n.Operator == "=" {
 			name := n.Left.(parser.Identifier).Value
-			utils.LogInfo("define variable", name)
+			utils.LogInfo("assign variable", name)
 			symbol, ok := c.symbolTable.Resolve(name)
 			if !ok {
 				utils.LogError("undefined variable", name)
@@ -173,6 +181,8 @@ func (c *Compiler) Compile(node parser.Node) {
 	case parser.AstTypeWhileStatement.Name():
 		// 标记进来条件前的地址
 		inLoopBeforePos := len(c.currentInstructions())
+		// 要标记进入了一个循环
+		c.enterLoop()
 
 		// 先编译条件
 		n := node.(parser.WhileStatement)
@@ -194,13 +204,30 @@ func (c *Compiler) Compile(node parser.Node) {
 
 		// 将占位符换成while 结束后的地址
 		afterConsequencePos := len(c.currentInstructions())
-		//todo 这里要拿一个栈记录一下这个 循环的结束地址，方便给 break 用
+
+		// 处理 continue 地址
+		hasContinue, continuePos := c.getContinueRetAddress()
+		if hasContinue {
+			c.changeOperand(continuePos, inLoopBeforePos)
+		}
+
+		// 处理 break 地址
+		hasBreak, breakPos := c.getBreakRetAddress()
+		if hasBreak {
+			c.changeOperand(breakPos, afterConsequencePos)
+		}
+
 		c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
 
 		// 将占位符换成跳到条件编译前的地址
 		c.changeOperand(jumpPos, inLoopBeforePos)
+		c.outLoop()
 	case parser.AstTypeBreakStatement.Name():
-		utils.LogError("not implemented", node.Type())
+		jumpPos := c.emit(OpCodeJump, 9999)
+		c.setBreakAddress(jumpPos)
+	case parser.AstTypeContinueStatement.Name():
+		jumpPos := c.emit(OpCodeJump, 9999)
+		c.setContinueAddress(jumpPos)
 	case parser.AstTypeForStatement.Name():
 		utils.LogError("not implemented", node.Type())
 	case parser.AstTypeNullLiteral.Name():
@@ -394,18 +421,6 @@ func (c *Compiler) addConstant(obj Object) int {
 	return len(c.constants) - 1
 }
 
-func (c *Compiler) ReturnBytecode() *Bytecode {
-	return &Bytecode{
-		Instructions: c.currentInstructions(),
-		Constants:    c.constants,
-	}
-}
-
-type Bytecode struct {
-	Instructions Instructions
-	Constants    []Object
-}
-
 func (c *Compiler) loadSymbol(s Symbol) {
 	switch s.Scope {
 	case GlobalScope:
@@ -414,5 +429,57 @@ func (c *Compiler) loadSymbol(s Symbol) {
 		c.emit(OpCodeGetLocal, s.Index)
 	case FreeScope:
 		c.emit(OpCodeGetFree, s.Index)
+	}
+}
+
+func (c *Compiler) enterLoop() {
+	c.loopIndex += 1
+	c.Loops = append(c.Loops, Loop{
+		LoopIndex:       c.loopIndex,
+		LoopBreakPos:    -1,
+		LoopContinuePos: -1,
+	})
+}
+
+func (c *Compiler) outLoop() {
+	c.loopIndex -= 1
+	c.Loops = c.Loops[:len(c.Loops)-1]
+}
+
+func (c *Compiler) setBreakAddress(addr int) {
+	c.Loops[c.loopIndex-1].LoopBreakPos = addr
+}
+
+func (c *Compiler) setContinueAddress(addr int) {
+	c.Loops[c.loopIndex-1].LoopContinuePos = addr
+}
+
+func (c *Compiler) getBreakRetAddress() (ok bool, retAddr int) {
+	if c.Loops[c.loopIndex-1].LoopBreakPos != -1 {
+		ok = true
+		retAddr = c.Loops[c.loopIndex-1].LoopBreakPos
+		return
+	}
+	return false, -1
+}
+
+func (c *Compiler) getContinueRetAddress() (ok bool, retAddr int) {
+	if c.Loops[c.loopIndex-1].LoopContinuePos != -1 {
+		ok = true
+		retAddr = c.Loops[c.loopIndex-1].LoopContinuePos
+		return
+	}
+	return false, -1
+}
+
+type Bytecode struct {
+	Instructions Instructions
+	Constants    []Object
+}
+
+func (c *Compiler) ReturnBytecode() *Bytecode {
+	return &Bytecode{
+		Instructions: c.currentInstructions(),
+		Constants:    c.constants,
 	}
 }

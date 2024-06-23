@@ -362,6 +362,7 @@ func (this *SansLangParser) astParseBlockStatement() Node {
 }
 
 func (this *SansLangParser) astParseContinueStatement() Node {
+	fmt.Printf("astParseContinueStatement %v\n", this.Current())
 	continueToken := this.Match(sansLexer.TokenTypeContinue)
 	if !continueToken.Error() {
 		return ContinueStatement{}
