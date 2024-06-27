@@ -62,12 +62,17 @@ func (c *Compiler) Compile(node parser.Node) {
 		for _, body := range bodys {
 			c.Compile(body)
 		}
-		c.emit(OpCodePop)
 	case parser.AstTypeBlockStatement.Name():
 		body := node.(parser.BlockStatement).Body
 		for _, item := range body {
 			c.Compile(item)
 		}
+	case parser.AstTypeExpressionStatement.Name():
+		e := node.(parser.ExpressionStatement).Exp
+		if e != nil {
+			c.Compile(e)
+		}
+		c.emit(OpCodePop)
 	case parser.AstTypeVariableDeclaration.Name():
 		n := node.(parser.VariableDeclaration)
 		name := n.Name.(parser.Identifier).Value
@@ -93,14 +98,16 @@ func (c *Compiler) Compile(node parser.Node) {
 			}
 			c.Compile(n.Right)
 
+			// 把值塞回去为了 pop
 			if symbol.Scope == GlobalScope {
 				c.emit(OpCodeSetGlobal, symbol.Index)
+				c.emit(OpCodeGetGlobal, symbol.Index)
 			} else {
 				c.emit(OpCodeSetLocal, symbol.Index)
+				c.emit(OpCodeGetLocal, symbol.Index)
 			}
 		default:
 			utils.LogError("unimplemented operator", n.Operator)
-			//case "+=":
 		}
 	case parser.AstTypeIdentifier.Name():
 		n := node.(parser.Identifier)
@@ -197,9 +204,11 @@ func (c *Compiler) Compile(node parser.Node) {
 			// todo 这个 null 不知道做啥的
 			//c.emit(OpCodeNull)
 		} else {
+			//utils.LogInfo("111111 in before \n, IfStatement", c.currentInstructions(), n)
 			c.Compile(n.Alternate)
-
+			//utils.LogInfo("111111 in pop \n, IfStatement", c.currentInstructions(), n)
 			if c.lastInstructionIs(OpCodePop) {
+				//utils.LogInfo("AstTypeIfStatement in pop \n", c.currentInstructions())
 				c.removeLastPop()
 			}
 		}

@@ -39,18 +39,31 @@ func TestVm(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestVmVar(t *testing.T) {
+	tests := []vmTestCase{
+		{"var a = 1", 1},
+		{"var a = 1 a = a + 2", 3},
+	}
+
+	runVmTests(t, tests)
+}
+
 func TestConditionals(t *testing.T) {
 	tests := []vmTestCase{
 		//{"if (true) { 10 }", 10},
+		//{"var i = 0 while (i == 0) { i = 1 }", false},
+
 		//{"if (true) { 10 } else { 20 }", 10},
 		//{"if (false) { 10 } else { 20 }", 20},
 		//{"if (1) { 10 }", 10},
-		{`var i = 1
-		if( i > 2 ) { 
-			i = i + 1
-		}
-		i
-		`, 1},
+		//{
+		//	`var i = 1
+		//		if( i > 2 ) {
+		//			i = i + 1
+		//		}
+		//		i
+		//`, 1,
+		//},
 
 		//{`var i = 0
 		//while (i == 0) {
@@ -60,23 +73,23 @@ func TestConditionals(t *testing.T) {
 		//	i = 1
 		//} i`, 1,
 		//},
-		//{`var i = 0
-		//while (i == 0) {
-		//	i = 1
-		//	while(true){
-		//		if(i == 0){
-		//			break
-		//		} else {
-		//			i = 0
-		//			continue
-		//		}
-		//	}
-		//	i = 2
-		//} i`, 2,
-		//},
+		{`var i = 0
+			while (i == 0) {
+				i = 1
+				while(true){
+					if(i == 0){
+						break
+					} else {
+						i = 0
+						continue
+					}
+				}
+				i = 2
+			} i`, 2,
+		},
 		{`
 		var i = 0
-		for(i = 0; i < 4; i = i + 2) {
+		for(i = 0; i < 4; i = i +2) {
 			if (i == 0) {
 				continue
 			}

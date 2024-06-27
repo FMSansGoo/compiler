@@ -72,14 +72,14 @@ func (vm *VM) Run() error {
 
 		op := ins[ip]
 		opCode := GetOpCodeFromValue(op)
-		utils.LogInfo("op opCode", op, opCode)
-		// debug mode
-		//for _, object := range vm.stack {
-		//	if object == nil {
-		//		continue
-		//	}
-		//	utils.LogInfo("stack item", object)
-		//}
+		utils.LogInfo("op opCode vm.sp", op, opCode, vm.sp)
+		//debug mode
+		for index, object := range vm.stack {
+			if object == nil {
+				continue
+			}
+			utils.LogInfo("stack item ", index, object)
+		}
 		switch opCode {
 		case OpCodeConstant:
 			constIndex := ReadUint16(ins[ip+1:])

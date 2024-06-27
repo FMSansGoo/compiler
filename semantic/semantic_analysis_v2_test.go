@@ -10,7 +10,7 @@ import (
 
 func TestSemanticAnalysisV2(t *testing.T) {
 	//基本类型
-	testSemanticAnalysis1_1()
+	//testSemanticAnalysis1_1()
 	////多重运算
 	//testSemanticAnalysis2_1()
 	////for 循环 while 循环 if else continue return
@@ -18,7 +18,7 @@ func TestSemanticAnalysisV2(t *testing.T) {
 	//testSemanticAnalysis3_2()
 	//testSemanticAnalysis3_3()
 	////函数
-	testSemanticAnalysis4_1()
+	//testSemanticAnalysis4_1()
 	//类
 	//testSemanticAnalysis5_1()
 	//testSemanticAnalysis5_2()

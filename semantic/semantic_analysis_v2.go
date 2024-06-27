@@ -56,6 +56,8 @@ func (this *SemanticAnalysisV2) visitProgram(body []parser.Node) {
 		// 调用函数
 		case parser.AstTypeCallExpression.Name():
 			this.visitCallExpression(item)
+		case parser.AstTypeExpressionStatement.Name():
+			this.visitExpressionStatement(item)
 		default:
 			utils.LogError("visitProgram visit item default", item.Type())
 		}
@@ -783,10 +785,10 @@ func (this *SemanticAnalysisV2) visitBlockStatement(node parser.Node) AllType {
 		// 赋值
 		case parser.AstTypeAssignmentExpression.Name():
 			this.visitAssignmentExpression(item)
-		// for 循环 break
+		// break
 		case parser.AstTypeBreakStatement.Name():
 			this.visitBreakStatement(item)
-		// for 循环 continue
+		// continue
 		case parser.AstTypeContinueStatement.Name():
 			this.visitContinueStatement(item)
 		// return
@@ -795,6 +797,9 @@ func (this *SemanticAnalysisV2) visitBlockStatement(node parser.Node) AllType {
 		// 函数调用
 		case parser.AstTypeCallExpression.Name():
 			this.visitCallExpression(item)
+		// exp
+		case parser.AstTypeExpressionStatement.Name():
+			this.visitExpressionStatement(item)
 		default:
 			utils.LogError("not support block statement type", item)
 		}
@@ -1009,6 +1014,42 @@ func (this *SemanticAnalysisV2) visitCallExpression(node parser.Node) (AllType, 
 		return valueType, variableName
 	}
 	utils.LogInfo("visitCallExpression", n.Object.Type())
+	return UnKnownType{}, ""
+}
+
+func (this *SemanticAnalysisV2) visitExpressionStatement(node parser.Node) (AllType, string) {
+	if node.Type() != parser.AstTypeExpressionStatement.Name() {
+		return UnKnownType{}, ""
+	}
+
+	n := node.(parser.ExpressionStatement)
+	exp := n.Exp
+
+	switch exp.Type() {
+	case parser.AstTypeCallExpression.Name():
+		this.visitCallExpression(exp)
+	case parser.AstTypeMemberExpression.Name():
+		this.visitMemberExpression(exp)
+	case parser.AstTypeIdentifier.Name():
+		this.visitIdentifier(exp)
+	case parser.AstTypeBinaryExpression.Name():
+		this.visitBinaryExpression(exp)
+	case parser.AstTypeNumberLiteral.Name():
+		this.visitNumberLiteral(exp)
+	case parser.AstTypeStringLiteral.Name():
+		this.visitStringLiteral(exp)
+	case parser.AstTypeArrayLiteral.Name():
+		this.visitArrayLiteral(exp)
+	case parser.AstTypeDictLiteral.Name():
+		this.visitDictLiteral(exp)
+	case parser.AstTypeNullLiteral.Name():
+		this.visitNullLiteral(exp)
+	case parser.AstTypeBooleanLiteral.Name():
+		this.visitBooleanLiteral(exp)
+	default:
+		utils.LogInfo("visitExpressionStatement", exp.Type())
+	}
+
 	return UnKnownType{}, ""
 }
 

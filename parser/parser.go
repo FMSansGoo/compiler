@@ -147,6 +147,12 @@ func (this *SansLangParser) astParseStatement() Node {
 	}
 	this.Reset(mark)
 
+	ast = this.astParseReturnStatement()
+	if ast != nil {
+		return ast
+	}
+	this.Reset(mark)
+
 	ast = this.astParseIfStatement()
 	if ast != nil {
 		return ast
@@ -177,11 +183,6 @@ func (this *SansLangParser) astParseStatement() Node {
 	}
 	this.Reset(mark)
 
-	ast = this.astParseReturnStatement()
-	if ast != nil {
-		return ast
-	}
-	this.Reset(mark)
 	return nil
 }
 
@@ -873,7 +874,7 @@ func (this *SansLangParser) astParseExpressionStatement() Node {
 	exp := this.astParseExpression()
 	if exp != nil {
 		fmt.Printf("astParseExpressionStatement %v\n", exp)
-		return exp
+		return ExpressionStatement{Exp: exp}
 	}
 	return nil
 }

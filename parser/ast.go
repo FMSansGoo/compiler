@@ -260,3 +260,12 @@ type MemberExpression struct {
 func (cb MemberExpression) Type() string {
 	return "MemberExpression"
 }
+
+// 为了做兼容
+type ExpressionStatement struct {
+	Exp Node `json:"exp"` // exp 包一层，方便打印
+}
+
+func (e ExpressionStatement) Type() string {
+	return "ExpressionStatement"
+}

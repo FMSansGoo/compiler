@@ -56,6 +56,9 @@ var (
 	AstTypeContinueStatement = newAstType("ContinueStatement", 25)
 	// CallExpression
 	AstTypeCallExpression = newAstType("CallExpression", 26)
+
+	// ExpressionStatement
+	AstTypeExpressionStatement = newAstType("ExpressionStatement", 30)
 )
 
 func newAstType(name string, value int64) AstType {

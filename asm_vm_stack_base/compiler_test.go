@@ -62,7 +62,7 @@ func TestIntegerArithmetic(t *testing.T) {
 			expectedInstructions: []Instructions{
 				GenerateByte(OpCodeConstant, 0),
 				GenerateByte(OpCodeConstant, 1),
-				GenerateByte(OpCodeGreaterThan),
+				GenerateByte(OpCodeGreaterThanEquals),
 				GenerateByte(OpCodePop),
 			},
 		},
@@ -83,6 +83,24 @@ func TestIntegerArithmetic(t *testing.T) {
 				GenerateByte(OpCodeConstant, 0),
 				GenerateByte(OpCodeConstant, 1),
 				GenerateByte(OpCodeNotEquals),
+				GenerateByte(OpCodePop),
+			},
+		},
+	}
+	runCompilerTests(t, tests)
+}
+
+func TestAssignment(t *testing.T) {
+	tests := []CompilerTest{
+		{
+			input:             "var a = 1 a = 1",
+			expectedConstants: []interface{}{1, 1},
+			expectedInstructions: []Instructions{
+				GenerateByte(OpCodeConstant, 0),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeConstant, 1),
+				GenerateByte(OpCodeSetGlobal, 0),
+				GenerateByte(OpCodeGetGlobal, 0),
 				GenerateByte(OpCodePop),
 			},
 		},
@@ -159,9 +177,7 @@ func TestIf(t *testing.T) {
 				GenerateByte(OpCodeJumpNotTruthy, 10), // 3
 				GenerateByte(OpCodeConstant, 0),       // 3
 				// 11 也是地址
-				GenerateByte(OpCodeJump, 11), //3
-				GenerateByte(OpCodeNull),     // 11
-				GenerateByte(OpCodePop),
+				GenerateByte(OpCodeJump, 10), //3
 			},
 		},
 		{
@@ -177,7 +193,6 @@ func TestIf(t *testing.T) {
 				// 13 也是地址
 				GenerateByte(OpCodeJump, 13),
 				GenerateByte(OpCodeConstant, 1),
-				GenerateByte(OpCodePop),
 			},
 		},
 		{
@@ -196,7 +211,6 @@ func TestIf(t *testing.T) {
 				// 13 也是地址
 				GenerateByte(OpCodeJump, 19),
 				GenerateByte(OpCodeConstant, 3),
-				GenerateByte(OpCodePop),
 			},
 		},
 	}
@@ -224,7 +238,38 @@ func TestWhile(t *testing.T) {
 				GenerateByte(OpCodeConstant, 2),       // 19
 				GenerateByte(OpCodeSetGlobal, 0),      // 22
 				GenerateByte(OpCodeJump, 6),           // 25
-				GenerateByte(OpCodePop),               // 26
+			},
+		},
+		{
+			input: `
+			var i = 0
+			while (i == 0) {
+				i = 1
+				while(true){
+					if(i == 0){
+						break
+					} else {
+						i = 0
+						continue
+					}
+				}
+				i = 2
+			} i
+			`,
+			expectedConstants: []interface{}{0, 0, 1},
+			expectedInstructions: []Instructions{
+				// pre
+				GenerateByte(OpCodeConstant, 0),  // 3
+				GenerateByte(OpCodeSetGlobal, 0), // 6
+				// conition
+				GenerateByte(OpCodeGetGlobal, 0), // 9
+				GenerateByte(OpCodeConstant, 1),  // 12
+				GenerateByte(OpCodeEquals),       // 13
+				// body
+				GenerateByte(OpCodeJumpNotTruthy, 25), // 16
+				GenerateByte(OpCodeConstant, 2),       // 19
+				GenerateByte(OpCodeSetGlobal, 0),      // 22
+				GenerateByte(OpCodeJump, 6),           // 25
 			},
 		},
 	}
@@ -257,7 +302,6 @@ func TestGlobalVarStatements(t *testing.T) {
 				GenerateByte(OpCodeSetGlobal, 0),
 				GenerateByte(OpCodeConstant, 1),
 				GenerateByte(OpCodeSetGlobal, 1),
-				GenerateByte(OpCodePop),
 			},
 		},
 		{
