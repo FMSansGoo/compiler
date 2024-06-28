@@ -938,7 +938,22 @@ func (this *SansLangParser) astParseLiteral() Node {
 	}
 
 	identifier := this.astParseIdentifier()
+	mark := this.Mark()
 	if identifier != nil {
+		// 点语法
+		if this.Expect(sansLexer.TokenTypeDot) {
+			this.Match(sansLexer.TokenTypeDot)
+			prop := this.astParseIdentifier()
+			if prop != nil {
+				node := MemberExpression{
+					Object:      identifier,
+					Property:    prop,
+					ElementType: "dot",
+				}
+				return this.astParseCallMemberExpressionTail(node)
+			}
+		}
+		this.Reset(mark)
 		return identifier
 	}
 

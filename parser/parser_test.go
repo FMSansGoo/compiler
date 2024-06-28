@@ -16,11 +16,11 @@ func TestNewBaseParser(t *testing.T) {
 	//// 函数
 	//testParser4()
 	//// 类
-	//testParser5()
+	testParser5()
 	// 额外的扩充
 	//testParser6()
 	//testParser7()
-	testParser8()
+	//testParser8()
 }
 
 func testParser1() {
@@ -159,6 +159,9 @@ func testParser5() {
 		}
 		var a = A.new()
 		var b = a.fuck()
+		log(a.age)
+		log(a.name)
+		var d = b + a.age
 	`
 	fmt.Println("====================== token init =======================")
 	tokenList := lexer.TokenList()

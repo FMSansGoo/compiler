@@ -288,7 +288,6 @@ func (this *SansLangLexer) nextToken() Token {
 		case this.isId(this.Current()):
 			id := this.getId()
 			idType := this.guessType(id)
-			fmt.Printf("id:%v idType:%s\n", id, idType)
 			if idType == TokenTypeBoolean.Name() {
 				return NewToken(TokenTypeBoolean, id)
 			} else {
