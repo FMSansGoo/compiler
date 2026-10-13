@@ -5,6 +5,7 @@ import (
 	"fmt"
 	lexer2 "go-compiler/lexer"
 	parser2 "go-compiler/parser"
+	"strings"
 	"testing"
 )
 
@@ -516,4 +517,74 @@ func testSemanticAnalysis5_6() {
 	semanticAnalysis := NewSemanticAnalysisV2(ast)
 	semanticAnalysis.Visit()
 	fmt.Println("====================== NewSemanticAnalysis end =======================")
+}
+
+func parseProgram(code string) parser2.Program {
+	lexer := lexer2.NewSansLangLexer(code)
+	tokens := lexer2.TokenList{Tokens: lexer.TokenList()}
+	return parser2.NewSansLangParser(&tokens).Parse()
+}
+
+func TestClassInheritanceSemantic(t *testing.T) {
+	ast := parseProgram(`
+		class B {
+			const new = function() {}
+			const cls.age = 1
+			const cls.greet = function() { return 1 }
+		}
+		class A super B {
+			const new = function(name) {
+				this.name = name
+			}
+			const cls.fuck = function() { return 1 }
+		}
+		var c = A.new()
+		var d = c.fuck()
+		var e = c.greet()
+	`)
+	analysis := NewSemanticAnalysisV2(ast)
+	analysis.Visit()
+
+	classSig, ok := analysis.CurrentScope.LookupSignature("A")
+	if !ok {
+		t.Fatal("class A missing from scope")
+	}
+	classType, ok := classSig.ReturnType.(ClassType)
+	if !ok {
+		t.Fatalf("A is %s", classSig.ReturnType.ValueType())
+	}
+	if _, found := findMember(classType, "greet"); !found {
+		t.Fatal("inherited greet missing on A")
+	}
+	if _, found := findMember(classType, "fuck"); !found {
+		t.Fatal("fuck missing on A")
+	}
+
+	dSig, ok := analysis.CurrentScope.LookupSignature("d")
+	if !ok || dSig.ReturnType.ValueType() != (NumberType{}).ValueType() {
+		t.Fatalf("d type = %v", dSig.ReturnType)
+	}
+	eSig, ok := analysis.CurrentScope.LookupSignature("e")
+	if !ok || eSig.ReturnType.ValueType() != (NumberType{}).ValueType() {
+		t.Fatalf("e type = %v", eSig.ReturnType)
+	}
+}
+
+func TestMissingSuperClass(t *testing.T) {
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			t.Fatal("expected missing super class to fail")
+		}
+		if !strings.Contains(fmt.Sprint(recovered), "super class not found") {
+			t.Fatalf("unexpected panic: %v", recovered)
+		}
+	}()
+
+	ast := parseProgram(`
+		class A super Missing {
+			const new = function() {}
+		}
+	`)
+	NewSemanticAnalysisV2(ast).Visit()
 }

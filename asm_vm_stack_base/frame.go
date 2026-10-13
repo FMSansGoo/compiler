@@ -6,9 +6,10 @@ package asm_vm_stack_base
 // 在虚拟机上，不必使用栈来存储帧，因为此处不受标准化调用约定或其他真实的内容约束，比如真实的内存地址和位置
 // 当然，其实也可以放在栈上存储一些信息，就是会比较繁琐一点
 type Frame struct {
-	cl          *ClosureObject // fn 指向帧引用的已编译函数
-	ip          int            // ip寄存器叫做指令寄存器 instruction pointer
-	basePointer int
+	cl             *ClosureObject // fn 指向帧引用的已编译函数
+	ip             int            // ip寄存器叫做指令寄存器 instruction pointer
+	basePointer    int
+	resultOverride Object // 构造调用用实例替换函数返回值
 }
 
 func NewFrame(cl *ClosureObject, basePointer int) *Frame {

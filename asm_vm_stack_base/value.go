@@ -120,6 +120,7 @@ type CompiledFunctionObject struct {
 	Instructions  Instructions `json:"instructions"`
 	NumLocals     int          `json:"numLocals"`
 	NumParameters int          `json:"numParameters"`
+	Constants     []Object     `json:"constants"`
 }
 
 func (b CompiledFunctionObject) ValueType() string {
@@ -141,4 +142,71 @@ func (b ClosureObject) ValueType() string {
 
 func (d ClosureObject) Inspect() string {
 	return "ClosureFunc"
+}
+
+const (
+	ClassMemberKind = 0
+	FieldInitKind   = 1
+	ConstructorKind = 2
+)
+
+type ClassObject struct {
+	Name       string
+	Super      *ClassObject
+	Members    map[string]Object
+	FieldInits map[string]Object
+}
+
+func (c ClassObject) ValueType() string {
+	return "ClassObject"
+}
+
+func (c ClassObject) Inspect() string {
+	return fmt.Sprintf("class %s", c.Name)
+}
+
+type InstanceObject struct {
+	Class  *ClassObject
+	Fields map[string]Object
+}
+
+func (i InstanceObject) ValueType() string {
+	return "InstanceObject"
+}
+
+func (i InstanceObject) Inspect() string {
+	name := ""
+	if i.Class != nil {
+		name = i.Class.Name
+	}
+	return fmt.Sprintf("instance %s", name)
+}
+
+type BoundMethodObject struct {
+	Receiver *InstanceObject
+	Method   *ClosureObject
+}
+
+func (b BoundMethodObject) ValueType() string {
+	return "BoundMethodObject"
+}
+
+func (b BoundMethodObject) Inspect() string {
+	return "boundMethod"
+}
+
+type ConstructorObject struct {
+	Class *ClassObject
+}
+
+func (c ConstructorObject) ValueType() string {
+	return "ConstructorObject"
+}
+
+func (c ConstructorObject) Inspect() string {
+	name := ""
+	if c.Class != nil {
+		name = c.Class.Name
+	}
+	return fmt.Sprintf("constructor %s", name)
 }

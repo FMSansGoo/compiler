@@ -363,6 +363,87 @@ func TestClosureCall(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestClassExecution(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			`
+			class A {
+				const new = function(name) {
+					this.name = name
+				}
+			}
+			var a = A.new("boy")
+			a.name
+			`,
+			"boy",
+		},
+		{
+			`
+			class A {
+				const new = function() {}
+				const cls.greet = function() { return 1 }
+			}
+			var a = A.new()
+			a.greet()
+			`,
+			1,
+		},
+		{
+			`
+			class B {
+				const new = function() {}
+				const cls.greet = function() { return 1 }
+			}
+			class A super B {
+				const new = function() {}
+			}
+			var a = A.new()
+			a.greet()
+			`,
+			1,
+		},
+		{
+			`
+			class B {
+				const new = function() {}
+				const cls.greet = function() { return 1 }
+			}
+			class A super B {
+				const new = function() {}
+				const cls.greet = function() { return 2 }
+			}
+			var a = A.new()
+			a.greet()
+			`,
+			2,
+		},
+		{
+			`
+			class A {
+				const new = function() {}
+				const cls.age = 1
+			}
+			var a = A.new()
+			a.age
+			`,
+			1,
+		},
+		{
+			`
+			class A {
+				const this.age = 4
+				const new = function() {}
+			}
+			var a = A.new()
+			a.age
+			`,
+			4,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 func TestRecursiveFibonacci(t *testing.T) {
 	tests := []vmTestCase{
 		{

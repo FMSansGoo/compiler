@@ -51,6 +51,10 @@ var (
 	OpCodeGetFree = newOpCode("GetFree", 63)
 	// 获取内置函数的变量指令
 	OpCodeGetBuiltin = newOpCode("GetBuiltin", 64)
+
+	OpCodeGetProperty = newOpCode("GetProperty", 65)
+	OpCodeSetProperty = newOpCode("SetProperty", 66)
+	OpCodeClass       = newOpCode("Class", 67)
 )
 
 func newOpCode(name string, value int64) OpCode {

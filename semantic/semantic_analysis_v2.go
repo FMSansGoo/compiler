@@ -140,6 +140,18 @@ func (this *SemanticAnalysisV2) visitVariableDeclaration(node parser.Node) {
 func (this *SemanticAnalysisV2) visitAssignmentExpression(node parser.Node) {
 	left := node.(parser.AssignmentExpression).Left
 	utils.LogInfo("visitClassVariableDeclaration visitAssignmentExpression", node.(parser.AssignmentExpression))
+	if left.Type() == parser.AstTypeMemberExpression.Name() {
+		mem := left.(parser.MemberExpression)
+		if mem.Object != nil && mem.Object.Type() == parser.AstTypeIdentifier.Name() {
+			objName := mem.Object.(parser.Identifier).Value
+			if objName == lexer.TokenTypeThis.Name() || objName == lexer.TokenTypeCls.Name() {
+				this.visitAssignmentValue(node.(parser.AssignmentExpression).Right)
+				return
+			}
+		}
+		utils.LogError("invalid assignment expression", left)
+		return
+	}
 	var variableName string
 	switch left.Type() {
 	case parser.AstTypeIdentifier.Name():
@@ -199,6 +211,43 @@ func (this *SemanticAnalysisV2) visitAssignmentExpression(node parser.Node) {
 	}
 	this.CurrentScope.AddSignature(variableName, valueType, false, varType)
 	return
+}
+
+func (this *SemanticAnalysisV2) visitAssignmentValue(node parser.Node) AllType {
+	if node == nil {
+		return UnKnownType{}
+	}
+	switch node.Type() {
+	case parser.AstTypeBinaryExpression.Name():
+		return this.visitBinaryExpression(node)
+	case parser.AstTypeIdentifier.Name():
+		valueType, _, _ := this.visitIdentifier(node)
+		return valueType
+	case parser.AstTypeNumberLiteral.Name():
+		return this.visitNumberLiteral(node)
+	case parser.AstTypeStringLiteral.Name():
+		valueType, _ := this.visitStringLiteral(node)
+		return valueType
+	case parser.AstTypeBooleanLiteral.Name():
+		return this.visitBooleanLiteral(node)
+	case parser.AstTypeArrayLiteral.Name():
+		return this.visitArrayLiteral(node)
+	case parser.AstTypeDictLiteral.Name():
+		return this.visitDictLiteral(node)
+	case parser.AstTypeNullLiteral.Name():
+		return this.visitNullLiteral(node)
+	case parser.AstTypeUnaryExpression.Name():
+		return this.visitUnaryExpression(node)
+	case parser.AstTypeCallExpression.Name():
+		valueType, _ := this.visitCallExpression(node)
+		return valueType
+	case parser.AstTypeMemberExpression.Name():
+		valueType, _ := this.visitMemberExpression(node)
+		return valueType
+	default:
+		utils.LogInfo("visitAssignmentValue", node.Type())
+		return UnKnownType{}
+	}
 }
 
 func (this *SemanticAnalysisV2) visitFunctionExpression(node parser.Node) (functionType AllType) {
@@ -993,7 +1042,14 @@ func (this *SemanticAnalysisV2) visitCallExpression(node parser.Node) (AllType, 
 	n := node.(parser.CallExpression)
 
 	if n.Object.Type() == parser.AstTypeMemberExpression.Name() {
-		return this.visitMemberExpression(node.(parser.CallExpression).Object)
+		valueType, name := this.visitMemberExpression(node.(parser.CallExpression).Object)
+		if fn, ok := valueType.(FunctionType); ok {
+			if len(fn.Params) != len(n.Args) {
+				utils.LogError("call expression param number error", len(fn.Params), len(n.Args))
+			}
+			return fn.ReturnType, name
+		}
+		return valueType, name
 	} else if n.Object.Type() == parser.AstTypeIdentifier.Name() {
 
 		valueType, variableName, _ := this.visitIdentifier(n.Object)
@@ -1026,6 +1082,10 @@ func (this *SemanticAnalysisV2) visitExpressionStatement(node parser.Node) (AllT
 	exp := n.Exp
 
 	switch exp.Type() {
+	case parser.AstTypeClassExpression.Name():
+		this.visitClassExpression(exp)
+	case parser.AstTypeAssignmentExpression.Name():
+		this.visitAssignmentExpression(exp)
 	case parser.AstTypeCallExpression.Name():
 		this.visitCallExpression(exp)
 	case parser.AstTypeMemberExpression.Name():
@@ -1080,20 +1140,19 @@ func (this *SemanticAnalysisV2) visitMemberExpression(node parser.Node) (AllType
 			utils.LogInfo("visitMemberExpression variableName", variableValueType, variableName)
 			if propertyName == lexer.TokenTypeNew.Name() {
 				variableValueType, _, _ = this.visitIdentifier(node.(parser.MemberExpression).Object)
-				return InstanceType{
-					ClassType: ClassType{
-						MemberSignatures: variableValueType.(ClassType).MemberSignatures,
-						SuperType:        variableValueType.(ClassType).SuperType,
-					},
-				}, propertyName
+				classType, ok := variableValueType.(ClassType)
+				if !ok {
+					utils.LogError("new called on non-class", node.(parser.MemberExpression).Object)
+					return UnKnownType{}, propertyName
+				}
+				return InstanceType{ClassType: classType}, propertyName
 			}
 			// 2.处理类方法
 			ins := InstanceType{}
 			if memberType.ValueType() == ins.ValueType() {
-				for _, signature := range memberType.(InstanceType).ClassType.MemberSignatures {
-					if signature.Name == propertyName {
-						return signature.ReturnType, propertyName
-					}
+				signature, ok := findMember(memberType.(InstanceType).ClassType, propertyName)
+				if ok {
+					return signature.ReturnType, propertyName
 				}
 			}
 			// 3.暂时没处理
@@ -1130,8 +1189,7 @@ func (this *SemanticAnalysisV2) visitClassExpression(node parser.Node) AllType {
 	if superClass != nil {
 		superClassType, superClassName, _ = this.visitIdentifier(superClass)
 
-		// 表示现在找不到这个类
-		if superClassType.ValueType() == UnKnownClassType.ValueType() {
+		if superClassType == nil || superClassType.ValueType() != (ClassType{}).ValueType() {
 			utils.LogError("super class not found", superClassName)
 			return UnKnownType{}
 		}
@@ -1145,9 +1203,14 @@ func (this *SemanticAnalysisV2) visitClassExpression(node parser.Node) AllType {
 	// 现在开始处理这个类
 	classBody := node.(parser.ClassExpression).Body
 	memberSignatures := make([]Signature, 0)
-	utils.LogInfo("visitClassExpression classBody", classBody.Type())
-	if classBody.Type() == parser.AstTypeClassBodyStatement.Name() {
-		memberSignatures = this.visitClassBodyStatement(classBody)
+	if classBody != nil {
+		utils.LogInfo("visitClassExpression classBody", classBody.Type())
+		if classBody.Type() == parser.AstTypeClassBodyStatement.Name() {
+			memberSignatures = this.visitClassBodyStatement(classBody)
+		}
+	}
+	if superClassType != nil && superClassType.ValueType() == (ClassType{}).ValueType() {
+		memberSignatures = mergeSignatures(superClassType.(ClassType).MemberSignatures, memberSignatures)
 	}
 	thisClassType := ClassType{
 		MemberSignatures: memberSignatures,
@@ -1198,6 +1261,13 @@ func (this *SemanticAnalysisV2) visitClassVariableDeclaration(node parser.Node) 
 	//	Value Node   // value属性
 	//}
 	left := node.(parser.ClassVariableDeclaration).Name
+	isStatic := false
+	if left.Type() == parser.AstTypeMemberExpression.Name() {
+		mem := left.(parser.MemberExpression)
+		if mem.Object != nil && mem.Object.Type() == parser.AstTypeIdentifier.Name() && mem.Object.(parser.Identifier).Value == lexer.TokenTypeCls.Name() {
+			isStatic = true
+		}
+	}
 	var variableName string
 	switch left.Type() {
 	case parser.AstTypeMemberExpression.Name():
@@ -1245,14 +1315,44 @@ func (this *SemanticAnalysisV2) visitClassVariableDeclaration(node parser.Node) 
 		utils.LogError("invalid class variable declaration", right)
 		return Signature{}
 	}
-	// 先这么写 false
-	this.CurrentScope.AddSignature(variableName, valueType, false, "const")
+	this.CurrentScope.AddSignature(variableName, valueType, isStatic, "const")
 
 	fmt.Printf("visitClassVariableDeclaration this.CurrentScope: %+v\n", this.CurrentScope)
 	return Signature{
 		Name:       variableName,
 		ReturnType: valueType,
-		IsStatic:   false,
+		IsStatic:   isStatic,
 		VarType:    "const",
 	}
+}
+
+func mergeSignatures(parent []Signature, child []Signature) []Signature {
+	merged := make([]Signature, len(parent))
+	copy(merged, parent)
+	for _, sig := range child {
+		replaced := false
+		for i := range merged {
+			if merged[i].Name == sig.Name {
+				merged[i] = sig
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			merged = append(merged, sig)
+		}
+	}
+	return merged
+}
+
+func findMember(classType ClassType, name string) (Signature, bool) {
+	for _, signature := range classType.MemberSignatures {
+		if signature.Name == name {
+			return signature, true
+		}
+	}
+	if classType.SuperType != nil && classType.SuperType.ValueType() == (ClassType{}).ValueType() {
+		return findMember(classType.SuperType.(ClassType), name)
+	}
+	return Signature{}, false
 }

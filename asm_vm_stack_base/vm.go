@@ -25,7 +25,10 @@ type VM struct {
 }
 
 func NewVM(bytecode *Bytecode) *VM {
+	return NewVMWithGlobals(bytecode, nil)
+}
 
+func NewVMWithGlobals(bytecode *Bytecode, globals []Object) *VM {
 	// 把 global 外层当做一个主函数来执行
 	globalFn := &CompiledFunctionObject{Instructions: bytecode.Instructions}
 	globalClosure := &ClosureObject{Fn: globalFn}
@@ -34,12 +37,16 @@ func NewVM(bytecode *Bytecode) *VM {
 	frames := make([]*Frame, FrameSize)
 	frames[0] = globalFrame
 
+	if globals == nil {
+		globals = make([]Object, GlobalSize)
+	}
+
 	return &VM{
 		instructions: bytecode.Instructions,
 		constants:    bytecode.Constants,
 		stack:        make([]Object, StackSize),
 		sp:           0,
-		globals:      make([]Object, GlobalSize),
+		globals:      globals,
 
 		frames:      frames,
 		framesIndex: 1,
@@ -85,7 +92,7 @@ func (vm *VM) Run() error {
 			constIndex := ReadUint16(ins[ip+1:])
 			vm.currentFrame().ip += 2
 
-			err := vm.push(vm.constants[constIndex])
+			err := vm.push(vm.frameConstants()[constIndex])
 			if err != nil {
 				return err
 			}
@@ -250,8 +257,33 @@ func (vm *VM) Run() error {
 
 			frame := vm.popFrame()
 			vm.sp = frame.basePointer - 1
+			if frame.resultOverride != nil {
+				returnValue = frame.resultOverride
+			}
 
 			err := vm.push(returnValue)
+			if err != nil {
+				return err
+			}
+		case OpCodeGetProperty:
+			name := vm.pop()
+			obj := vm.pop()
+			err := vm.executeGetProperty(obj, name)
+			if err != nil {
+				return err
+			}
+		case OpCodeSetProperty:
+			value := vm.pop()
+			name := vm.pop()
+			obj := vm.pop()
+			err := vm.executeSetProperty(obj, name, value)
+			if err != nil {
+				return err
+			}
+		case OpCodeClass:
+			memberCount := int(ReadUint16(ins[ip+1:]))
+			vm.currentFrame().ip += 2
+			err := vm.executeClass(memberCount)
 			if err != nil {
 				return err
 			}
@@ -321,8 +353,223 @@ func (vm *VM) executeFunctionCall(numArgs int) error {
 	// 处理一下内置方法
 	case *BuiltinObject:
 		return vm.callBuiltin(callee, numArgs)
+	case *BoundMethodObject:
+		return vm.callBoundMethod(callee, numArgs)
+	case *ConstructorObject:
+		return vm.callConstructor(callee, numArgs)
 	default:
 		return fmt.Errorf("calling non-function and non-built-in")
+	}
+}
+
+func (vm *VM) callBoundMethod(bound *BoundMethodObject, numArgs int) error {
+	args := make([]Object, numArgs)
+	copy(args, vm.stack[vm.sp-numArgs:vm.sp])
+	vm.sp = vm.sp - numArgs - 1
+
+	if err := vm.push(bound.Method); err != nil {
+		return err
+	}
+	if err := vm.push(bound.Receiver); err != nil {
+		return err
+	}
+	for _, arg := range args {
+		if err := vm.push(arg); err != nil {
+			return err
+		}
+	}
+	return vm.callFunctionClosure(bound.Method, numArgs+1)
+}
+
+func (vm *VM) callConstructor(ctor *ConstructorObject, numArgs int) error {
+	inst := &InstanceObject{
+		Class:  ctor.Class,
+		Fields: map[string]Object{},
+	}
+	vm.applyFieldInits(ctor.Class, inst)
+
+	method, _ := lookupClassMember(ctor.Class, "new")
+	args := make([]Object, numArgs)
+	copy(args, vm.stack[vm.sp-numArgs:vm.sp])
+	vm.sp = vm.sp - numArgs - 1
+
+	closure, ok := method.(*ClosureObject)
+	if !ok {
+		return vm.push(inst)
+	}
+	if err := vm.push(closure); err != nil {
+		return err
+	}
+	if err := vm.push(inst); err != nil {
+		return err
+	}
+	for _, arg := range args {
+		if err := vm.push(arg); err != nil {
+			return err
+		}
+	}
+	if err := vm.callFunctionClosure(closure, numArgs+1); err != nil {
+		return err
+	}
+	vm.currentFrame().resultOverride = inst
+	return nil
+}
+
+func (vm *VM) applyFieldInits(class *ClassObject, inst *InstanceObject) {
+	if class == nil {
+		return
+	}
+	vm.applyFieldInits(class.Super, inst)
+	for name, value := range class.FieldInits {
+		inst.Fields[name] = value
+	}
+}
+
+func lookupClassMember(class *ClassObject, name string) (Object, bool) {
+	for current := class; current != nil; current = current.Super {
+		if current.Members == nil {
+			continue
+		}
+		member, ok := current.Members[name]
+		if ok {
+			return member, true
+		}
+	}
+	return nil, false
+}
+
+func (vm *VM) executeGetProperty(obj Object, nameObj Object) error {
+	name, err := objectString(nameObj)
+	if err != nil {
+		return err
+	}
+	switch target := obj.(type) {
+	case *ClassObject:
+		if name == "new" {
+			return vm.push(&ConstructorObject{Class: target})
+		}
+		member, ok := lookupClassMember(target, name)
+		if !ok {
+			return vm.push(&NullObject{})
+		}
+		return vm.push(member)
+	case *InstanceObject:
+		if value, ok := target.Fields[name]; ok {
+			return vm.push(value)
+		}
+		if name == "new" {
+			return vm.push(&NullObject{})
+		}
+		member, ok := lookupClassMember(target.Class, name)
+		if !ok {
+			return vm.push(&NullObject{})
+		}
+		if closure, ok := member.(*ClosureObject); ok {
+			return vm.push(&BoundMethodObject{Receiver: target, Method: closure})
+		}
+		return vm.push(member)
+	default:
+		if obj == nil {
+			return fmt.Errorf("property not supported: nil")
+		}
+		return fmt.Errorf("property not supported: %s", obj.ValueType())
+	}
+}
+
+func (vm *VM) executeSetProperty(obj Object, nameObj Object, value Object) error {
+	name, err := objectString(nameObj)
+	if err != nil {
+		return err
+	}
+	switch target := obj.(type) {
+	case *InstanceObject:
+		if target.Fields == nil {
+			target.Fields = map[string]Object{}
+		}
+		target.Fields[name] = value
+		return vm.push(value)
+	case *ClassObject:
+		if target.Members == nil {
+			target.Members = map[string]Object{}
+		}
+		target.Members[name] = value
+		return vm.push(value)
+	default:
+		if obj == nil {
+			return fmt.Errorf("property assignment not supported: nil")
+		}
+		return fmt.Errorf("property assignment not supported: %s", obj.ValueType())
+	}
+}
+
+func (vm *VM) executeClass(memberCount int) error {
+	members := make([]struct {
+		name  string
+		value Object
+		kind  int
+	}, memberCount)
+	for i := memberCount - 1; i >= 0; i-- {
+		kindObj := vm.pop()
+		value := vm.pop()
+		nameObj := vm.pop()
+		kindNum, ok := kindObj.(*NumberObject)
+		if !ok {
+			return fmt.Errorf("class member kind is not a number")
+		}
+		name, err := objectString(nameObj)
+		if err != nil {
+			return err
+		}
+		members[i].name = name
+		members[i].value = value
+		members[i].kind = int(kindNum.Value)
+	}
+
+	superObj := vm.pop()
+	var super *ClassObject
+	switch parent := superObj.(type) {
+	case *NullObject:
+	case *ClassObject:
+		super = parent
+	default:
+		if superObj != nil {
+			return fmt.Errorf("super is not a class: %s", superObj.ValueType())
+		}
+	}
+
+	nameObj := vm.pop()
+	name, err := objectString(nameObj)
+	if err != nil {
+		return err
+	}
+
+	class := &ClassObject{
+		Name:       name,
+		Super:      super,
+		Members:    map[string]Object{},
+		FieldInits: map[string]Object{},
+	}
+	for _, member := range members {
+		if member.kind == FieldInitKind {
+			class.FieldInits[member.name] = member.value
+			continue
+		}
+		class.Members[member.name] = member.value
+	}
+	return vm.push(class)
+}
+
+func objectString(obj Object) (string, error) {
+	switch value := obj.(type) {
+	case *StringObject:
+		return value.Value, nil
+	case StringObject:
+		return value.Value, nil
+	default:
+		if obj == nil {
+			return "", fmt.Errorf("expected string, got nil")
+		}
+		return "", fmt.Errorf("expected string, got %s", obj.ValueType())
 	}
 }
 
@@ -548,8 +795,15 @@ func (vm *VM) push(o Object) error {
 	return nil
 }
 
+func (vm *VM) frameConstants() []Object {
+	if fn := vm.currentFrame().cl.Fn; fn != nil && fn.Constants != nil {
+		return fn.Constants
+	}
+	return vm.constants
+}
+
 func (vm *VM) pushFunctionClosure(constIndex, numFree int) error {
-	constant := vm.constants[constIndex]
+	constant := vm.frameConstants()[constIndex]
 	function, ok := constant.(*CompiledFunctionObject)
 	if !ok {
 		return fmt.Errorf("not a function: %+v", constant)

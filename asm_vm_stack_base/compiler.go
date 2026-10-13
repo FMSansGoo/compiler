@@ -13,6 +13,7 @@ type Compiler struct {
 	symbolTable  *SymbolTable
 	loopIndex    int
 	Loops        []Loop
+	injectThis   bool
 }
 
 type Loop struct {
@@ -55,6 +56,14 @@ func NewCompiler() *Compiler {
 	}
 }
 
+func NewCompilerWithState(symbolTable *SymbolTable) *Compiler {
+	compiler := NewCompiler()
+	if symbolTable != nil {
+		compiler.symbolTable = symbolTable
+	}
+	return compiler
+}
+
 func (c *Compiler) Compile(node parser.Node) {
 	switch node.Type() {
 	case parser.AstTypeProgram.Name():
@@ -90,6 +99,14 @@ func (c *Compiler) Compile(node parser.Node) {
 		// 先处理 = 的赋值
 		switch n.Operator {
 		case "=":
+			if member, ok := n.Left.(parser.MemberExpression); ok && member.ElementType == "dot" {
+				c.Compile(member.Object)
+				prop := member.Property.(parser.Identifier).Value
+				c.emit(OpCodeConstant, c.addConstant(&StringObject{Value: prop}))
+				c.Compile(n.Right)
+				c.emit(OpCodeSetProperty)
+				break
+			}
 			name := n.Left.(parser.Identifier).Value
 			utils.LogInfo("assign variable", name)
 			symbol, ok := c.symbolTable.Resolve(name)
@@ -346,8 +363,13 @@ func (c *Compiler) Compile(node parser.Node) {
 		c.emit(OpCodeDict, len(kvs)*2)
 	case parser.AstTypeFunctionExpression.Name():
 		utils.LogInfo("function in?")
+		injectThis := c.injectThis
+		c.injectThis = false
 		c.enterScope()
 		functionNode := node.(parser.FunctionExpression)
+		if injectThis {
+			c.symbolTable.Define("this")
+		}
 
 		for _, p := range functionNode.Params {
 			id := p.(parser.Identifier)
@@ -377,10 +399,17 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.loadSymbol(s)
 		}
 
+		numParameters := len(functionNode.Params)
+		if injectThis {
+			numParameters++
+		}
+		constantPool := make([]Object, len(c.constants))
+		copy(constantPool, c.constants)
 		compiledFn := &CompiledFunctionObject{
 			Instructions:  instructions,
 			NumLocals:     numLocals,
-			NumParameters: len(functionNode.Params),
+			NumParameters: numParameters,
+			Constants:     constantPool,
 		}
 
 		fnIndex := c.addConstant(compiledFn)
@@ -402,8 +431,14 @@ func (c *Compiler) Compile(node parser.Node) {
 			c.Compile(n.Object)
 			c.Compile(n.Property)
 			c.emit(OpCodeObjectCall)
+		} else if n.ElementType == "dot" {
+			c.Compile(n.Object)
+			prop := n.Property.(parser.Identifier).Value
+			c.emit(OpCodeConstant, c.addConstant(&StringObject{Value: prop}))
+			c.emit(OpCodeGetProperty)
 		}
-		// todo 支持点语法
+	case parser.AstTypeClassExpression.Name():
+		c.compileClass(node.(parser.ClassExpression))
 	case parser.AstTypeReturnStatement.Name():
 		v := node.(parser.ReturnStatement).Value
 		if v != nil {
@@ -412,6 +447,70 @@ func (c *Compiler) Compile(node parser.Node) {
 		c.emit(OpCodeReturn)
 	default:
 		utils.LogError("unknown node type: %s", node.Type())
+	}
+}
+
+func (c *Compiler) compileClass(n parser.ClassExpression) {
+	className := n.Name.(parser.Identifier).Value
+	symbol := c.symbolTable.Define(className)
+
+	c.emit(OpCodeConstant, c.addConstant(&StringObject{Value: className}))
+	if n.SuperClass != nil {
+		c.Compile(n.SuperClass)
+	} else {
+		c.emit(OpCodeNull)
+	}
+
+	members := []parser.Node{}
+	if body, ok := n.Body.(parser.ClassBodyStatement); ok && body.Body != nil {
+		members = body.Body
+	}
+	for _, item := range members {
+		decl, ok := item.(parser.ClassVariableDeclaration)
+		if !ok {
+			utils.LogError("unknown class body", item.Type())
+			continue
+		}
+		memberName, kind, inject := classMemberMeta(decl)
+		c.emit(OpCodeConstant, c.addConstant(&StringObject{Value: memberName}))
+		if inject {
+			c.injectThis = true
+		}
+		c.Compile(decl.Value)
+		c.injectThis = false
+		c.emit(OpCodeConstant, c.addConstant(&NumberObject{Value: float64(kind)}))
+	}
+	c.emit(OpCodeClass, len(members))
+
+	if symbol.Scope == GlobalScope {
+		c.emit(OpCodeSetGlobal, symbol.Index)
+		c.emit(OpCodeGetGlobal, symbol.Index)
+	} else {
+		c.emit(OpCodeSetLocal, symbol.Index)
+		c.emit(OpCodeGetLocal, symbol.Index)
+	}
+}
+
+func classMemberMeta(decl parser.ClassVariableDeclaration) (string, int, bool) {
+	switch name := decl.Name.(type) {
+	case parser.Identifier:
+		if name.Value == "new" {
+			return "new", ConstructorKind, true
+		}
+		return name.Value, ClassMemberKind, false
+	case parser.MemberExpression:
+		prop := name.Property.(parser.Identifier).Value
+		objName := ""
+		if id, ok := name.Object.(parser.Identifier); ok {
+			objName = id.Value
+		}
+		if objName == "this" {
+			return prop, FieldInitKind, false
+		}
+		return prop, ClassMemberKind, true
+	default:
+		utils.LogError("invalid class member", decl.Name)
+		return "", ClassMemberKind, false
 	}
 }
 

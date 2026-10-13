@@ -118,6 +118,10 @@ var definitions = map[OpCode]*Definition{
 	OpCodeGetFree: {OpCodeGetFree.Name(), 1, 1},
 	// 获取内置函数
 	OpCodeGetBuiltin: {OpCodeGetBuiltin.Name(), 1, 1},
+
+	OpCodeGetProperty: {OpCodeGetProperty.Name(), 0, 0},
+	OpCodeSetProperty: {OpCodeSetProperty.Name(), 0, 0},
+	OpCodeClass:       {OpCodeClass.Name(), 2, 1},
 }
 
 func Lookup(op string) (*Definition, error) {
