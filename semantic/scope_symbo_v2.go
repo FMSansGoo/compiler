@@ -5,6 +5,7 @@ import (
 	"go-compiler/utils"
 )
 
+// ScopeV2 记录名字、类型和 const/var。它不分配字节码里的变量下标。
 type ScopeV2 struct {
 	Table  map[string]Signature
 	Parent *ScopeV2

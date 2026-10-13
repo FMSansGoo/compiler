@@ -15,6 +15,7 @@ type Symbol struct {
 	Index int
 }
 
+// SymbolTable 给全局、局部和自由变量分配下标，供 GetGlobal / GetLocal 使用。
 type SymbolTable struct {
 	Outer *SymbolTable
 

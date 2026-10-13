@@ -11,6 +11,8 @@ type FunctionInfo struct {
 	RetOffset int64  `json:"ret_offset"`
 }
 
+// CodeGenerator 把 AST 写成寄存器汇编，再由 Assembler 收成 []int64。
+// 执行在 vm.go，目前只跑算术指令，还没接到 REPL。
 type CodeGenerator struct {
 	Asm         string         `json:"asm"`
 	Ast         parser.Program `json:"program_ast"`

@@ -64,6 +64,7 @@ func NewCompilerWithState(symbolTable *SymbolTable) *Compiler {
 	return compiler
 }
 
+// Compile 把 AST 编成栈式字节码。它不读取语义分析的类型，只按语法发指令。
 func (c *Compiler) Compile(node parser.Node) {
 	switch node.Type() {
 	case parser.AstTypeProgram.Name():

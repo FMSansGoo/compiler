@@ -187,10 +187,10 @@ REPL 使用 [asm_vm_stack_base/](asm_vm_stack_base/)。[compiler.go](asm_vm_stac
 
 [asm_to_bytecode.go](asm_vm_register_base/asm_to_bytecode.go) 的 `Assembler` 把汇编收成 `[]int64`。指令表在 [instruction.go](asm_vm_register_base/instruction.go)，主体是 16 位运算：`set2`、`add2`、`sub2`、`mul2`、`div2`、比较、`jump`、`push` / `pop`，以及伪指令 `.function`、`.return`、`.func_var`。
 
-这条路径停在字节码数组。仓库里没有读取这块内存并跑起来的解释循环。
+[vm.go](asm_vm_register_base/vm.go) 能执行 `set2`、加减乘除和 `halt`。跳转、比较、函数和内存访问还没跑，这条路径也还没接到 REPL。
 
 ## TODO
 
-- 寄存器后端还没有执行循环
+- 寄存器后端只执行算术指令，跳转、比较、函数还没跑，也没接到 REPL
 - 数字快路径只覆盖算术和局部变量，不生成 CPU 机器码
 - 优化，例如常量折叠

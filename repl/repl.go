@@ -13,6 +13,7 @@ import (
 
 const Prompt = ">> "
 
+// Start 跨输入保留三份状态：语义作用域、编译器符号表、虚拟机全局变量。
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	scope := semantic.NewScopeV2()
@@ -45,6 +46,9 @@ func Start(in io.Reader, out io.Writer) {
 	}
 }
 
+// runSource 的顺序是词法、语法、语义检查、栈式编译、执行，最后打印栈顶。
+// 语义检查失败会 panic，由上面的 recover 打印后返回，这一段不会编译执行。
+// 编译器不读语义类型，它用自己的符号表再走一遍同一份 AST。
 func runSource(source string, out io.Writer, scope *semantic.ScopeV2, symbolTable *asm_vm_stack_base.SymbolTable, globals []asm_vm_stack_base.Object) {
 	defer func() {
 		if recovered := recover(); recovered != nil {

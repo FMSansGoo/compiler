@@ -8,10 +8,7 @@ import (
 )
 
 func main() {
-	// 我这里暂时把 test 文件拆分了
-	// 其实这里应该放整体编译的逻辑
-	// 没关系先这样
-
+	// 入口只启动 REPL。词法、语法、语义检查、栈式编译和执行都在 repl.runSource。
 	user, err := user.Current()
 	if err != nil {
 		print(err)

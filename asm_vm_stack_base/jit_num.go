@@ -2,6 +2,7 @@ package asm_vm_stack_base
 
 import "fmt"
 
+// 纯数字函数的自有指令。由 Go 循环执行，不是 CPU 机器码。VM.JitEnabled 默认关闭。
 type NumOp int
 
 const (
