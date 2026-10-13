@@ -117,10 +117,12 @@ func (b BuiltinObject) ValueType() string {
 }
 
 type CompiledFunctionObject struct {
-	Instructions  Instructions `json:"instructions"`
-	NumLocals     int          `json:"numLocals"`
-	NumParameters int          `json:"numParameters"`
-	Constants     []Object     `json:"constants"`
+	Instructions   Instructions `json:"instructions"`
+	NumLocals      int          `json:"numLocals"`
+	NumParameters  int          `json:"numParameters"`
+	Constants      []Object     `json:"constants"`
+	Numeric        *NumericCode `json:"numeric"`
+	numericChecked bool
 }
 
 func (b CompiledFunctionObject) ValueType() string {

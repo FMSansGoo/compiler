@@ -22,6 +22,8 @@ type VM struct {
 	//  存储栈帧数据
 	frames      []*Frame
 	framesIndex int
+	// 为纯数字函数启用自有指令。默认关闭。
+	JitEnabled bool
 }
 
 func NewVM(bytecode *Bytecode) *VM {
@@ -580,12 +582,50 @@ func (vm *VM) callFunctionClosure(cl *ClosureObject, numArgs int) error {
 			cl.Fn.NumParameters, numArgs)
 	}
 
+	if vm.JitEnabled {
+		code := cl.Fn.numericCode()
+		if code != nil {
+			return vm.callNumeric(cl, code, numArgs)
+		}
+	}
+
 	frame := NewFrame(cl, vm.sp-numArgs)
 	vm.pushFrame(frame)
 
 	vm.sp = frame.basePointer + cl.Fn.NumLocals
 
 	return nil
+}
+
+func (fn *CompiledFunctionObject) numericCode() *NumericCode {
+	if fn.numericChecked {
+		return fn.Numeric
+	}
+	fn.numericChecked = true
+	fn.Numeric = compileNumeric(fn)
+	return fn.Numeric
+}
+
+func (vm *VM) callNumeric(cl *ClosureObject, code *NumericCode, numArgs int) error {
+	args := make([]float64, numArgs)
+	base := vm.sp - numArgs
+	for i := 0; i < numArgs; i++ {
+		number, ok := vm.stack[base+i].(*NumberObject)
+		if !ok {
+			frame := NewFrame(cl, vm.sp-numArgs)
+			vm.pushFrame(frame)
+			vm.sp = frame.basePointer + cl.Fn.NumLocals
+			return nil
+		}
+		args[i] = number.Value
+	}
+
+	result, err := runNumeric(code, args)
+	if err != nil {
+		return err
+	}
+	vm.sp = vm.sp - numArgs - 1
+	return vm.push(&NumberObject{Value: result})
 }
 
 func (vm *VM) callBuiltin(builtin *BuiltinObject, numArgs int) error {

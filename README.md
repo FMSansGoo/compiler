@@ -2,7 +2,7 @@
 
 用 Go 实现的教学语言 **sans** 编译器。模块名是 `go-compiler`，语言版本见 [go.mod](go.mod)（Go 1.21）。
 
-入口 [main.go](main.go) 启动交互环境，提示语是 “sans programming language”。REPL 走栈式虚拟机：读入一行源码，词法分析、语法分析、编译成字节码并执行，打印栈顶结果。语义分析和寄存器后端已经有实现，目前由各自的测试驱动，没有接到 `main`。
+入口 [main.go](main.go) 启动交互环境，提示语是 “sans programming language”。REPL 先做语义分析，再走栈式虚拟机：词法分析、语法分析、类型检查、编译成字节码并执行，打印栈顶结果。寄存器后端仍只在测试里调用。
 
 ## 目录
 
@@ -27,9 +27,9 @@ flowchart LR
   parser --> reg[asm_vm_register_base 汇编与字节码]
 ```
 
-REPL（[repl/repl.go](repl/repl.go)）的实际路径是：一行源码 → 词法 → 语法 → 栈式编译 → 虚拟机，然后把栈顶值写到标准输出。
+REPL（[repl/repl.go](repl/repl.go)）的实际路径是：源码 → 词法 → 语法 → 语义分析 → 栈式编译 → 虚拟机，然后把栈顶值写到标准输出。花括号还没配平时会继续读下一行。作用域、符号表和全局变量会留给后面的输入。
 
-语义分析（[semantic/](semantic/)）和寄存器后端（[asm_vm_register_base/](asm_vm_register_base/)）从同一份 AST 出发，调用点在对应的 `*_test.go` 里。
+寄存器后端（[asm_vm_register_base/](asm_vm_register_base/)）从同一份 AST 出发，调用点在它自己的测试里。
 
 ## 运行
 
@@ -38,7 +38,7 @@ go run .
 go test ./...
 ```
 
-`go run .` 进入 REPL，提示符是 `>>`。每读入一行就新建一个编译器并执行，行与行之间不共享符号表。[repl/repl.go](repl/repl.go) 里注明这条路径还不完整。
+`go run .` 进入 REPL，提示符是 `>>`。类体或函数体可以分多行输入，未闭合的 `{` 会换成 `.. ` 继续读。语义错误会打印出来，这一段不会执行。
 
 栈式虚拟机的行为以 [asm_vm_stack_base/vm_test.go](asm_vm_stack_base/vm_test.go) 和 [asm_vm_stack_base/compiler_test.go](asm_vm_stack_base/compiler_test.go) 为准。语义分析和寄存器代码生成的测试目前以打印 AST、符号表或汇编为主。
 
@@ -147,7 +147,7 @@ var a = A.new()
 
 示例输入在 [semantic/semantic_analysis_v2_test.go](semantic/semantic_analysis_v2_test.go)，覆盖基本类型、逻辑运算、循环、函数和类。`TestSemanticAnalysisV2` 里这些用例默认是注释掉的，需要手动打开对应的 `testSemanticAnalysis*` 才会跑。
 
-这条分析没有插入 REPL。REPL 执行前不会做类型检查。
+REPL 在编译前会调用 `Visit`。语义错误沿用 `utils.LogError` 的 panic，REPL 接住后打印并继续下一轮。
 
 ## 两条后端
 
@@ -175,7 +175,9 @@ REPL 使用 [asm_vm_stack_base/](asm_vm_stack_base/)。[compiler.go](asm_vm_stac
 | `log` | 打印参数，结果是 `null` |
 | `push` | 在数组末尾追加一个元素，返回新数组 |
 
-编译器的 `Compile` 没有 `ClassExpression` 分支。类语法可以解析，栈式虚拟机不会执行类。
+类在这条虚拟机上可以执行。`class A super B` 继承父类的 `cls` 成员，子类同名成员覆盖父类。`A.new(...)` 创建实例并调用 `new`，返回实例。`this.field = ...` 写实例字段。`obj.method()` 把实例绑定为 `this`。
+
+纯数字函数可以再收成一套更短的自有指令，定义和执行在 [jit_num.go](asm_vm_stack_base/jit_num.go)。指令只有加载数字常量、读写局部变量、加减乘除、取负、丢弃栈顶和返回，操作数是 `float64`。`VM.JitEnabled` 默认关闭。打开后，`callFunctionClosure` 会尝试编译被调用的函数；字节码里一旦出现比较、跳转、调用或属性访问，就整段留在原来的解释器里。这不是 CPU 机器码，仍然由 Go 循环执行。测试见 [jit_test.go](asm_vm_stack_base/jit_test.go)。
 
 ### 寄存器后端
 
@@ -189,8 +191,6 @@ REPL 使用 [asm_vm_stack_base/](asm_vm_stack_base/)。[compiler.go](asm_vm_stac
 
 ## TODO
 
-- 类和继承：语法和语义检查已经有了，执行后端还没接上
-- 把语义分析插进执行路径，让 REPL 在跑之前做作用域和类型检查
-- REPL 跨行状态：保留符号表和虚拟机，而不是每行新建编译器
-- JIT
-- 优化
+- 寄存器后端还没有执行循环
+- 数字快路径只覆盖算术和局部变量，不生成 CPU 机器码
+- 优化，例如常量折叠
